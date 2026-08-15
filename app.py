@@ -1,326 +1,464 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 # ==========================================
-# 1. การตั้งค่าหน้าเพจและ CSS (UI/UX)
+# 1. PAGE CONFIG & CUSTOM CSS (16P Style)
 # ==========================================
-st.set_page_config(page_title="Cognitive MBTI & Career Path", layout="wide")
+st.set_page_config(page_title="Advanced MBTI & Career Assessment", page_icon="🧠", layout="wide")
 
-st.markdown("""
+custom_css = """
 <style>
-    .main-header {font-size: 2.5rem; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 30px;}
-    .section-header {font-size: 1.5rem; font-weight: bold; color: #18BC9C; margin-top: 20px;}
-    .stRadio > label {font-weight: bold;}
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
+    
+    html, body, [class*="css"]  {
+        font-family: 'Kanit', sans-serif;
+    }
+    
+    /* Main container background */
+    .stApp {
+        background-color: #f3f4f6;
+    }
+    
+    /* Header Styling */
+    h1, h2, h3 {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    
+    /* Card-like styling for tabs and content */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        background-color: white;
+        padding: 10px 20px 0px 20px;
+        border-radius: 10px 10px 0 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: transparent;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        color: #7f8c8d;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #3498db !important;
+        border-bottom: 4px solid #3498db !important;
+    }
+    
+    /* Button styling */
+    div.stButton > button:first-child {
+        background-color: #3498db;
+        color: white;
+        border-radius: 20px;
+        padding: 10px 24px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #2980b9;
+        transform: translateY(-2px);
+    }
+
+    /* Style the result cards */
+    .result-card {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 24px;
+        border-top: 4px solid #8e44ad;
+    }
+    
+    .type-header {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #8e44ad;
+        margin-bottom: 0;
+    }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
-# 2. ฐานข้อมูลคำถาม (อิงจากที่ผู้ใช้ระบุ)
+# 2. DATA STRUCTURES & QUESTIONS
 # ==========================================
-questions_cf = {
+COGNITIVE_QUESTIONS = {
     "Ne": [
-        "คุณมักจะเชื่อมโยงเรื่องราวที่ไม่เกี่ยวข้องกันเข้าด้วยกันได้อย่างรวดเร็ว",
-        "คุณชอบการระดมสมอง และมองหาไอเดียใหม่ๆ มากกว่าการลงมือทำสิ่งเดิม",
-        "คุณมักจะพูดว่า 'ถ้าเกิดว่า...' เพื่อหาทางเลือกใหม่ๆ อยู่เสมอ",
-        "คุณรู้สึกเบื่อหน่ายได้ง่ายเมื่อต้องทำงานที่ซ้ำซากจำเจ",
-        "คุณมองเห็นโอกาสหรือความเป็นไปได้หลายอย่างในเหตุการณ์เดียวจนบางครั้งเลือกไม่ถูก",
-        "คุณชอบการสนทนาที่กระโดดจากเรื่องหนึ่งไปอีกเรื่องหนึ่งตามความเกี่ยวเนื่องของไอเดีย",
-        "คุณมักจะมองเห็นศักยภาพที่ซ่อนอยู่ในตัวคนหรือโปรเจกต์ต่างๆ",
-        "คุณให้ความสำคัญกับ 'นวัตกรรม' และ 'ความแปลกใหม่' มากกว่าวิถีปฏิบัติดั้งเดิม",
-        "คุณชอบการทดลองทำสิ่งต่างๆ ด้วยวิธีที่แตกต่างไปจากเดิมทุกครั้ง",
-        "คุณมักจะมีแรงบันดาลใจพุ่งพล่านในช่วงเริ่มต้นโปรเจกต์ใหม่ แต่ยากที่จะทำให้จบ"
+        "มักเชื่อมโยงเรื่องราวที่ไม่เกี่ยวข้องกันได้อย่างรวดเร็ว", "ชอบระดมสมองหาไอเดียใหม่", 
+        "มักพูดว่า 'ถ้าเกิดว่า...'", "เบื่อง่ายกับงานซ้ำซาก", "เห็นโอกาสหลายอย่างจนเลือกไม่ถูก", 
+        "สนทนากระโดดข้ามเรื่องตามไอเดีย", "เห็นศักยภาพที่ซ่อนอยู่", "ให้ความสำคัญกับนวัตกรรม", 
+        "ชอบทดลองวิธีใหม่", "แรงบันดาลใจพุ่งช่วงเริ่มโปรเจกต์"
     ],
     "Ni": [
-        "คุณมักจะมีอาการ 'อ๋อ!' หรือเข้าใจเรื่องยากๆ ได้เองโดยอธิบายไม่ได้ว่ารู้ได้อย่างไร",
-        "คุณให้ความสำคัญกับความหมายที่ซ่อนอยู่เบื้องหลังเหตุการณ์มากกว่าสิ่งที่เห็นตรงหน้า",
-        "คุณมักจะคาดการณ์แนวโน้มในอนาคตได้แม่นยำจากรูปแบบ (Patterns) ที่คุณสังเกตเห็น",
-        "คุณชอบมองภาพรวม มากกว่าการลงไปเจาะลึกในรายละเอียดเล็กๆ น้อยๆ",
-        "คุณมักจะใช้สัญลักษณ์หรืออุปมาอุปไมยในการทำความเข้าใจโลก",
-        "คุณมีความเชื่อมั่นในสัญชาตญาณภายในของตนเองอย่างแรงกล้า",
-        "คุณมักจะจดจ่อกับเป้าหมายในระยะยาวมากกว่าความพึงพอใจในปัจจุบัน",
-        "คุณพยายามหา 'ความจริงเพียงหนึ่งเดียว' หรือแก่นแท้ของสรรพสิ่ง",
-        "คุณมักจะรู้สึกว่าตัวเองมีความเข้าใจในเรื่องที่ซับซ้อนอย่างลึกซึ้งกว่าคนทั่วไป",
-        "คุณชอบวางแผนล่วงหน้าและมักจะมีวิสัยทัศน์ที่ชัดเจนว่าชีวิตในอีก 5-10 ปีข้างหน้าจะเป็นอย่างไร"
+        "มีอาการ 'อ๋อ!' เข้าใจเรื่องยากได้เอง", "เน้นความหมายเบื้องหลัง", "คาดการณ์แนวโน้มจาก Patterns", 
+        "มองภาพรวมมากกว่ารายละเอียด", "ใช้อุปมาอุปไมย", "เชื่อสัญชาตญาณอย่างแรงกล้า", 
+        "จดจ่อเป้าหมายระยะยาว", "หาความจริงเพียงหนึ่งเดียว", "เข้าใจเรื่องซับซ้อนลึกซึ้ง", "วางวิสัยทัศน์ 5-10 ปีชัดเจน"
     ],
     "Se": [
-        "คุณตอบสนองต่อสภาพแวดล้อมรอบตัวได้อย่างรวดเร็วและว่องไว",
-        "คุณชอบกิจกรรมที่ท้าทายทางกายภาพหรือกีฬาที่ตื่นเต้นเร้าใจ",
-        "คุณชอบสิ่งที่จับต้องได้จริงมากกว่าทฤษฎีที่จับต้องไม่ได้",
-        "คุณสังเกตเห็นรายละเอียดทางกายภาพ (สี เสียง กลิ่น) ของสิ่งรอบตัวได้อย่างชัดเจน",
-        "คุณชอบการเรียนรู้ผ่านการลงมือทำจริง มากกว่าการอ่านตำรา",
-        "คุณมักจะตัดสินใจตามสถานการณ์เฉพาะหน้าและใช้ชีวิตอยู่กับปัจจุบัน",
-        "คุณมีความสามารถในการปรับตัวเข้ากับสภาพแวดล้อมใหม่ๆ ได้อย่างดีเยี่ยม",
-        "คุณชื่นชอบสุนทรียภาพและความรื่นรมย์ทางประสาทสัมผัส (อาหารอร่อย เสื้อผ้าสวย)",
-        "คุณไม่ชอบการรอคอยและต้องการเห็นผลลัพธ์ทันที",
-        "คุณมักจะสังเกตเห็นการเปลี่ยนแปลงเล็กๆ น้อยๆ ในสิ่งแวดล้อมที่คนอื่นอาจมองข้าม"
+        "ตอบสนองสิ่งรอบตัวไว", "ชอบกิจกรรมท้าทายทางกาย", "ชอบสิ่งที่จับต้องได้", 
+        "สังเกตรายละเอียดทางกายภาพชัดเจน", "เรียนรู้ผ่านการลงมือทำ", "ตัดสินใจตามสถานการณ์เฉพาะหน้า", 
+        "ปรับตัวเข้ากับสิ่งแวดล้อมเก่ง", "ชื่นชอบสุนทรียภาพ", "ไม่ชอบรอคอย ต้องการผลทันที", "สังเกตการเปลี่ยนแปลงเล็กๆ น้อยๆ ได้ดี"
     ],
     "Si": [
-        "คุณมีความจำที่แม่นยำเกี่ยวกับเหตุการณ์ในอดีตหรือรายละเอียดของข้อมูล",
-        "คุณให้ความสำคัญกับความมั่นคงและประเพณีดั้งเดิม",
-        "คุณชอบทำสิ่งต่างๆ ตามขั้นตอนหรือวิธีการที่เคยทำสำเร็จมาแล้ว",
-        "คุณรู้สึกอุ่นใจเมื่อได้ทำกิจวัตรประจำวันที่คุ้นเคย",
-        "คุณสังเกตเห็นความผิดปกติในร่างกายของตนเองได้อย่างรวดเร็ว (เช่น อุณหภูมิหรือความหิว)",
-        "คุณมักจะเปรียบเทียบสถานการณ์ปัจจุบันกับเหตุการณ์ที่เคยเกิดขึ้นในอดีตเสมอ",
-        "คุณเป็นคนละเอียดรอบคอบและให้ความสำคัญกับความถูกต้องของข้อมูล",
-        "คุณชอบการวางแผนที่ชัดเจนและมีโครงสร้างที่แน่นอน",
-        "คุณมักจะเก็บรวบรวมสิ่งของที่มีคุณค่าทางจิตใจหรือมีความทรงจำร่วมด้วย",
-        "คุณให้ความเชื่อถือในข้อมูลที่ผ่านการพิสูจน์แล้วมากกว่าไอเดียใหม่ๆ ที่ยังไม่เคยลอง"
+        "จำอดีตและรายละเอียดแม่นยำ", "เน้นความมั่นคงประเพณี", "ทำตามขั้นตอนที่เคยสำเร็จ", 
+        "อุ่นใจกับกิจวัตรประจำวัน", "สังเกตความผิดปกติของร่างกายไว", "เปรียบเทียบปัจจุบันกับอดีต", 
+        "ละเอียดรอบคอบเน้นความถูกต้อง", "ชอบวางแผนมีโครงสร้าง", "เก็บของมีค่าทางจิตใจ", "เชื่อข้อมูลที่พิสูจน์แล้ว"
     ],
     "Te": [
-        "คุณให้ความสำคัญกับ 'ผลลัพธ์' และ 'ประสิทธิภาพ' ในการทำงานเป็นอันดับแรก",
-        "คุณชอบจัดระเบียบสภาพแวดล้อม แผนงาน หรือคน เพื่อให้บรรลุเป้าหมาย",
-        "คุณใช้เกณฑ์ที่เป็นรูปธรรมและตรรกะภายนอกในการตัดสินใจ",
-        "คุณมักจะพูดตรงไปตรงมาและเน้นความจริงมากกว่าการรักษาน้ำใจ",
-        "คุณชอบสร้างแผนภูมิ รายการสิ่งที่ต้องทำ หรือตารางเวลา",
-        "คุณตัดสินใจได้รวดเร็วและเด็ดขาดเมื่อมีข้อมูลที่จำเป็นครบถ้วน",
-        "คุณรู้สึกหงุดหงิดเมื่อเห็นความไม่เป็นระเบียบหรือการทำงานที่ไม่มีประสิทธิภาพ",
-        "คุณชอบใช้ทรัพยากรที่มีอยู่ให้เกิดประโยชน์สูงสุด",
-        "คุณมักจะใช้ 'ข้อมูลสถิติ' หรือ 'หลักฐานเชิงประจักษ์' เพื่อสนับสนุนความคิดเห็นของคุณ",
-        "คุณมองว่ากฎเกณฑ์และมาตรฐานเป็นสิ่งจำเป็นเพื่อให้สังคมหรือองค์กรขับเคลื่อนไปได้"
+        "เน้นผลลัพธ์และประสิทธิภาพ", "ชอบจัดระเบียบเพื่อให้บรรลุเป้า", "ใช้ตรรกะภายนอกตัดสินใจ", 
+        "พูดตรงไปตรงมาเน้นความจริง", "ชอบสร้างตาราง/To-do list", "ตัดสินใจเด็ดขาดเมื่อข้อมูลครบ", 
+        "หงุดหงิดกับความไม่เป็นระเบียบ", "ใช้ทรัพยากรคุ้มค่า", "ใช้สถิติสนับสนุนความคิด", "มองว่ากฎเกณฑ์เป็นสิ่งจำเป็น"
     ],
     "Ti": [
-        "คุณชอบแยกแยะส่วนประกอบของสิ่งต่างๆ เพื่อดูว่ามันทำงานอย่างไร",
-        "คุณให้ความสำคัญกับความถูกต้องแม่นยำทางตรรกะมากกว่าผลลัพธ์ที่รวดเร็ว",
-        "คุณมีโครงสร้างตรรกะส่วนตัวในการทำความเข้าใจโลก",
-        "คุณมักจะตั้งคำถามกับกฎเกณฑ์หรือความรู้ทั่วไปถ้ามันดูไม่สมเหตุสมผลสำหรับคุณ",
-        "คุณชอบแก้ปัญหาที่ซับซ้อนด้วยการคิดวิเคราะห์อย่างเป็นระบบในหัว",
-        "คุณต้องการคำนิยามที่ชัดเจนและแม่นยำในการสนทนาหรือการเรียนรู้",
-        "คุณสามารถวิจารณ์ความคิดของตัวเองได้อย่างเป็นกลางเพื่อหาจุดบกพร่อง",
-        "คุณชอบความรู้เพื่อความรู้ มากกว่าการนำไปใช้ประโยชน์",
-        "คุณมักจะดูเหมือนคนสันโดษเมื่อต้องใช้สมาธิในการคิดวิเคราะห์เรื่องยากๆ",
-        "คุณเก่งในการหาจุดบกพร่องทางตรรกะในคำพูดหรือข้อโต้แย้งของผู้อื่น"
+        "ชอบแยกแยะดูการทำงาน", "เน้นความถูกต้องทางตรรกะมากกว่าความเร็ว", "มีโครงสร้างตรรกะส่วนตัว", 
+        "ตั้งคำถามกับกฎที่ไม่สมเหตุสมผล", "แก้ปัญหาซับซ้อนในหัว", "ต้องการคำนิยามชัดเจน", 
+        "วิจารณ์ความคิดตัวเองอย่างเป็นกลาง", "ชอบความรู้เพื่อความรู้", "สันโดษเวลาใช้สมาธิ", "หาจุดบกพร่องทางตรรกะเก่ง"
     ],
     "Fe": [
-        "คุณให้ความสำคัญกับความรู้สึกของคนรอบข้างและบรรยากาศในกลุ่ม",
-        "คุณพยายามรักษาความกลมกลืน และหลีกเลี่ยงความขัดแย้งในสังคม",
-        "คุณสามารถรับรู้ถึงอารมณ์และความต้องการของผู้อื่นได้โดยสัญชาตญาณ",
-        "คุณมักจะปรับพฤติกรรมของตนเองเพื่อให้ผู้อื่นรู้สึกสบายใจ",
-        "คุณให้ความสำคัญกับมารยาททางสังคมและค่านิยมของส่วนรวม",
-        "คุณรู้สึกมีความสุขเมื่อได้ช่วยเหลือหรือดูแลคนอื่น",
-        "คุณเก่งในการประสานรอยร้าวและทำให้ผู้คนกลับมาเข้าใจกัน",
-        "คุณมักจะตัดสินใจโดยคำนึงถึงผลกระทบที่จะเกิดขึ้นกับความสัมพันธ์ของคนในกลุ่ม",
-        "คุณต้องการการยอมรับหรือคำยืนยันจากคนรอบข้างเพื่อให้มั่นใจในตัวเอง",
-        "คุณมักจะแสดงความรู้สึกออกมาให้คนอื่นรับรู้ได้ง่ายผ่านสีหน้าหรือท่าทาง"
+        "เน้นความรู้สึกคนรอบข้าง", "รักษากลมกลืนเลี่ยงขัดแย้ง", "รับรู้อารมณ์ผู้อื่นด้วยสัญชาตญาณ", 
+        "ปรับตัวให้คนอื่นสบายใจ", "เน้นมารยาทสังคม", "สุขเมื่อได้ดูแลคนอื่น", 
+        "ประสานรอยร้าวเก่ง", "ตัดสินใจโดยคำนึงถึงความสัมพันธ์", "ต้องการการยอมรับ", "แสดงความรู้สึกทางสีหน้าชัดเจน"
     ],
     "Fi": [
-        "คุณมีความเชื่อและค่านิยมส่วนตัวที่ยึดถืออย่างเคร่งครัดและไม่เปลี่ยนแปลงง่ายๆ",
-        "คุณให้ความสำคัญกับ 'ความจริงแท้' และการเป็นตัวของตัวเอง",
-        "คุณมักจะประเมินสิ่งต่างๆ ว่า 'ดี' หรือ 'เลว' ตามความรู้สึกภายในของคุณเอง",
-        "คุณมีความเห็นอกเห็นใจผู้อื่นอย่างลึกซึ้ง โดยเฉพาะคนที่ถูกเอาเปรียบ",
-        "คุณมักจะเก็บความรู้สึกที่แท้จริงไว้ภายในและแชร์ให้กับคนที่ไว้ใจจริงๆ เท่านั้น",
-        "คุณไม่ชอบการทำตามกระแสสังคมถ้าสิ่งนั้นขัดกับความรู้สึกส่วนตัวของคุณ",
-        "คุณมีความเข้าใจในอารมณ์ความรู้สึกที่ซับซ้อนของมนุษย์อย่างละเอียดอ่อน",
-        "คุณแสวงหาความหมายและความสอดคล้องระหว่างการกระทำกับค่านิยมภายใน",
-        "คุณไวต่อความรู้สึกที่ดู 'เสแสร้ง' หรือ 'ไม่จริงใจ' ของคนอื่น",
-        "คุณมักจะตัดสินใจโดยถามตัวเองว่า 'สิ่งนี้มันใช่ตัวเราจริงๆ หรือไม่?'"
+        "มีค่านิยมส่วนตัวเคร่งครัด", "เน้นความจริงแท้และเป็นตัวของตัวเอง", "ประเมินดีเลวตามความรู้สึก", 
+        "เห็นอกเห็นใจคนถูกเอาเปรียบ", "เก็บความรู้สึกแชร์แค่คนไว้ใจ", "ไม่ตามกระแสถ้าขัดความรู้สึก", 
+        "เข้าใจอารมณ์ซับซ้อน", "หาความสอดคล้องของการกระทำกับค่านิยม", "ไวต่อความเสแสร้ง", "ตัดสินใจโดยถามว่า 'นี่คือตัวเราไหม'"
     ]
 }
 
-mbti_stack_logic = {
-    'INTJ': {'Dom': 'Ni', 'Aux': 'Te', 'Tert': 'Fi', 'Inf': 'Se'},
-    'INTP': {'Dom': 'Ti', 'Aux': 'Ne', 'Tert': 'Si', 'Inf': 'Fe'},
-    'ENTJ': {'Dom': 'Te', 'Aux': 'Ni', 'Tert': 'Se', 'Inf': 'Fi'},
-    'ENTP': {'Dom': 'Ne', 'Aux': 'Ti', 'Tert': 'Fe', 'Inf': 'Si'},
-    'INFJ': {'Dom': 'Ni', 'Aux': 'Fe', 'Tert': 'Ti', 'Inf': 'Se'},
-    'INFP': {'Dom': 'Fi', 'Aux': 'Ne', 'Tert': 'Si', 'Inf': 'Te'},
-    'ENFJ': {'Dom': 'Fe', 'Aux': 'Ni', 'Tert': 'Se', 'Inf': 'Ti'},
-    'ENFP': {'Dom': 'Ne', 'Aux': 'Fi', 'Tert': 'Te', 'Inf': 'Si'},
-    'ISTJ': {'Dom': 'Si', 'Aux': 'Te', 'Tert': 'Fi', 'Inf': 'Ne'},
-    'ISFJ': {'Dom': 'Si', 'Aux': 'Fe', 'Tert': 'Ti', 'Inf': 'Ne'},
-    'ESTJ': {'Dom': 'Te', 'Aux': 'Si', 'Tert': 'Ne', 'Inf': 'Fi'},
-    'ESFJ': {'Dom': 'Fe', 'Aux': 'Si', 'Tert': 'Ne', 'Inf': 'Ti'},
-    'ISTP': {'Dom': 'Ti', 'Aux': 'Se', 'Tert': 'Ni', 'Inf': 'Fe'},
-    'ISFP': {'Dom': 'Fi', 'Aux': 'Se', 'Tert': 'Ni', 'Inf': 'Te'},
-    'ESTP': {'Dom': 'Se', 'Aux': 'Ti', 'Tert': 'Fe', 'Inf': 'Ni'},
-    'ESFP': {'Dom': 'Se', 'Aux': 'Fi', 'Tert': 'Te', 'Inf': 'Ni'}
+INTERESTS = [
+    "1. คณิตศาสตร์และคอมพิวเตอร์ (เน้นตรรกะ ตัวเลข อัลกอริทึม)",
+    "2. วิทยาศาสตร์และเทคโนโลยี (เน้นตั้งคำถาม ทดลอง นวัตกรรม)",
+    "3. ภาษาและวรรณกรรม (เน้นสื่อสาร วัฒนธรรม เล่าเรื่อง)",
+    "4. สังคมศึกษาและมนุษยศาสตร์ (เน้นเข้าใจมนุษย์ ประวัติศาสตร์ กฎหมาย)",
+    "5. ศิลปะ ดนตรี และการออกแบบ (เน้นจินตนาการ สุนทรียภาพ อิสระ)"
+]
+
+WORK_GOALS = [
+    "อาชีพยืดหยุ่น บริหารเวลา/สถานที่เอง", "โครงสร้างชัดเจน มั่นคง เป็นระบบ", "ท้าทาย แปลกใหม่ ได้สร้างสรรค์",
+    "ช่วยเหลือ ดูแล รักษาชีวิตผู้อื่น", "พัฒนาสังคม ยกระดับความเป็นอยู่", "ถ่ายทอดความรู้ เป็นแรงบันดาลใจ",
+    "ผู้เชี่ยวชาญเฉพาะทาง หาคนแทนยาก", "ผู้นำ ผู้บริหาร องค์กรขนาดใหญ่", "สร้างนวัตกรรมหรือธุรกิจของตัวเอง"
+]
+
+FINANCIALS = {
+    "budget": ["ก. จำกัดสูง (ไม่เกิน 15k/ต้องกู้)", "ข. ปานกลาง (15k-40k/รัฐได้)", "ค. ไม่จำกัด (40k+/เอกชน/อินเตอร์)"],
+    "goal": ["ก. มั่นคงสูง", "ข. รายได้เร็ว/คืนทุนไว", "ค. อิสระ/เป็นตัวเอง"],
+    "burden": ["ก. ต้องรีบทำงานใช้หนี้/ส่งบ้าน", "ข. ไม่มีภาระเร่งด่วน"],
+    "scholarship": ["ก. สนใจมาก (ใช้ทุนแลกเรียนฟรี)", "ข. ไม่สนใจ (ต้องการอิสระ)"],
+    "location": ["ก. จำกัด (ต้องเรียนใกล้บ้าน)", "ข. ยืดหยุ่น (ไปต่างจังหวัด/อยู่หอได้)"]
 }
 
 # ==========================================
-# 3. ฟังก์ชันการคำนวณและวิเคราะห์
+# 3. PROCESSING LOGIC
 # ==========================================
 def calculate_mbti(scores):
     """
-    คำนวณหา MBTI จากคะแนน Cognitive Functions โดยใช้วิธีหาจุดห่าง (Distance) ที่น้อยที่สุด
-    กับ Stack ที่เป็นไปได้ทั้ง 16 แบบ (หลักตรรกศาสตร์)
+    Calculates MBTI using pure Jungian cognitive function logic.
     """
-    best_match = None
-    max_score = -1
-
-    for mbti, stack in mbti_stack_logic.items():
-        # ให้น้ำหนัก Dom > Aux > Tert > Inf
-        score = (scores[stack['Dom']] * 4) + (scores[stack['Aux']] * 3) + \
-                (scores[stack['Tert']] * 2) + (scores[stack['Inf']] * 1)
-        if score > max_score:
-            max_score = score
-            best_match = mbti
+    # 1. Identify Dominant Function
+    dom_func = max(scores, key=scores.get)
+    
+    # 2. Identify Auxiliary Function (Must be opposite attitude E/I and opposite category Judging/Perceiving)
+    is_dom_extraverted = dom_func.endswith('e')
+    is_dom_perceiving = dom_func.startswith('N') or dom_func.startswith('S')
+    
+    aux_candidates = []
+    for f in scores.keys():
+        if f == dom_func: continue
+        is_f_extraverted = f.endswith('e')
+        is_f_perceiving = f.startswith('N') or f.startswith('S')
+        
+        # Aux must be opposite attitude (E <-> I) and opposite preference (P <-> J)
+        if is_f_extraverted != is_dom_extraverted and is_f_perceiving != is_dom_perceiving:
+            aux_candidates.append(f)
             
-    return best_match
+    # Find the highest scoring valid auxiliary function
+    aux_func = max(aux_candidates, key=lambda x: scores[x]) if aux_candidates else None
+    
+    # Deduce MBTI Type
+    mbti = ""
+    # I/E
+    mbti += "E" if is_dom_extraverted else "I"
+    
+    # S/N & T/F (Look at Dom and Aux)
+    funcs = [dom_func, aux_func]
+    mbti += "N" if any(f.startswith('N') for f in funcs) else "S"
+    mbti += "T" if any(f.startswith('T') for f in funcs) else "F"
+    
+    # J/P 
+    # Extraverted Judging function (Te, Fe) means J. Extraverted Perceiving (Ne, Se) means P.
+    if (dom_func.endswith('e') and not is_dom_perceiving) or (aux_func and aux_func.endswith('e') and not is_f_perceiving):
+        mbti += "J"
+    else:
+        mbti += "P"
+        
+    # Stack Deduction
+    stack = [dom_func, aux_func]
+    # Tertiary is opposite of Aux
+    tert_func = aux_func[0] + ('e' if aux_func[1] == 'i' else 'i')
+    # Inferior is opposite of Dom
+    inf_func = dom_func[0] + ('e' if dom_func[1] == 'i' else 'i')
+    stack.extend([tert_func, inf_func])
+    
+    return mbti, stack
 
-def generate_radar_chart(scores):
-    df = pd.DataFrame(dict(r=list(scores.values()), theta=list(scores.keys())))
-    fig = px.line_polar(df, r='r', theta='theta', line_close=True, template="plotly_dark")
-    fig.update_traces(fill='toself', line_color='#18BC9C')
+def plot_radar(scores):
+    categories = ['Ne', 'Ni', 'Se', 'Si', 'Te', 'Ti', 'Fe', 'Fi']
+    values = [scores[cat] for cat in categories]
+    values.append(values[0]) # close loop
+    categories.append(categories[0])
+    
+    fig = go.Figure(data=go.Scatterpolar(
+      r=values,
+      theta=categories,
+      fill='toself',
+      fillcolor='rgba(52, 152, 219, 0.4)',
+      line=dict(color='#2980b9')
+    ))
+    fig.update_layout(
+      polar=dict(
+        radialaxis=dict(visible=True, range=[10, 50])
+      ),
+      showlegend=False,
+      margin=dict(l=40, r=40, t=40, b=40),
+      height=400
+    )
     return fig
 
-# ==========================================
-# 4. ส่วนแสดงผล (UI - Tabs)
-# ==========================================
-st.markdown('<div class="main-header">🎯 ค้นหาตัวตนและเส้นทางอาชีพด้วย Cognitive Functions</div>', unsafe_allow_html=True)
-
-# สร้าง Tabs สำหรับแบบทดสอบ
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🧠 1. แบบทดสอบ Cognitive", 
-    "📚 2. ความสนใจรายวิชา", 
-    "🚀 3. เป้าหมายการทำงาน", 
-    "💰 4. ข้อมูลทุนทรัพย์", 
-    "📊 5. ผลการวิเคราะห์ (สรุปผล)"
-])
-
-# ใช้ st.form เพื่อเก็บข้อมูลทั้งหมดก่อน Submit
-with st.form("main_form"):
+def generate_recommendation(mbti, top_interests, work_goals, financial):
+    """
+    Synthesizes career and education path based on inputs.
+    """
+    rec = {"career": "", "education": "", "strategy": ""}
     
-    # --- TAB 1: Cognitive Functions ---
-    with tab1:
-        st.markdown('<div class="section-header">ส่วนที่ 1: แบบทดสอบบุคลิกภาพเชิงลึก (80 ข้อ)</div>', unsafe_allow_html=True)
-        st.write("ให้คะแนน 1 (ไม่ตรงเลย) ถึง 5 (ตรงมากที่สุด)")
+    # Career Logic based on MBTI + Goals
+    if "T" in mbti and "J" in mbti: 
+        rec["career"] = "สายผู้บริหาร, วิศวกรรม, การจัดการระบบ, นักวิเคราะห์ข้อมูล, ที่ปรึกษาด้านธุรกิจ"
+    elif "T" in mbti and "P" in mbti:
+        rec["career"] = "โปรแกรมเมอร์, นักวิจัย, ช่างเทคนิคเฉพาะทาง, สถาปนิกระบบ, นักวิเคราะห์ทางการเงิน"
+    elif "F" in mbti and "J" in mbti:
+        rec["career"] = "นักจิตวิทยา, ครูบาอาจารย์, งานทรัพยากรบุคคล (HR), นักสังคมสงเคราะห์, แพทย์/พยาบาล"
+    else: # FP
+        rec["career"] = "ศิลปิน, ครีเอทีฟ, นักเขียน, นักออกแบบ, เจ้าของธุรกิจส่วนตัว (SME)"
+
+    # Adjust based on goals
+    if "ผู้เชี่ยวชาญเฉพาะทาง หาคนแทนยาก" in work_goals:
+        rec["career"] += " (เน้นการเป็น Specialist แบบเจาะลึกเฉพาะทาง)"
+    if "สร้างนวัตกรรมหรือธุรกิจของตัวเอง" in work_goals:
+        rec["career"] += " (โดยมีเป้าหมายระยะยาวคือการเป็น Entrepreneur)"
         
-        cf_results = {}
-        for func, questions in questions_cf.items():
-            st.subheader(f"ชุดคำถาม: {func}")
-            scores = []
+    # Education & Strategy Logic based on Financials
+    budget = financial["budget"]
+    burden = financial["burden"]
+    
+    if "จำกัดสูง" in budget or "ใช้หนี้" in burden:
+        rec["education"] = "แนะนำมหาวิทยาลัยของรัฐ (เช่น ม.รามคำแหง, มสธ.) หรือสายอาชีพ (ปวส.) ที่เน้นจบเร็วได้ทำงานทันที"
+        rec["strategy"] = "ควรสมัครขอทุนการศึกษาแบบให้เปล่า หรือพิจารณาคณะที่เรียนไปทำงานไปได้ (Work-Study) เน้นสาขาที่ตลาดงานมีความต้องการสูงเพื่อคืนทุนไว"
+        if "สนใจมาก" in financial["scholarship"]:
+            rec["strategy"] += " แนะนำสอบชิงทุนผูกพันของรัฐบาล หรือทุนพยาบาล/ครู ที่จบมาแล้วมีงานทำแน่นอน"
+    elif "ปานกลาง" in budget:
+        rec["education"] = "มหาวิทยาลัยของรัฐทั่วไป หรือมหาวิทยาลัยเอกชนที่สามารถกู้ กยศ. ได้"
+        rec["strategy"] = "สามารถเลือกเรียนในสายที่ตรงกับความสนใจได้มากขึ้น ควรทำกิจกรรมเสริมระหว่างเรียนเพื่อสร้าง Portfolio"
+    else:
+        rec["education"] = "มหาวิทยาลัยชั้นนำ (รัฐ/เอกชน) หรือหลักสูตรนานาชาติ (International College) / ศึกษาต่อต่างประเทศ"
+        rec["strategy"] = "ไม่มีข้อจำกัดทางการเงิน ควรเน้นการสร้าง Connection ระดับสูง การไปแลกเปลี่ยนต่างประเทศ และการฝึกงานในบริษัทข้ามชาติ"
+
+    return rec
+
+
+# ==========================================
+# 4. APP STATE MANAGEMENT
+# ==========================================
+if "step" not in st.session_state:
+    st.session_state.step = 0
+    st.session_state.scores = {f: 0 for f in COGNITIVE_QUESTIONS.keys()}
+    st.session_state.interests = {}
+    st.session_state.goals = []
+    st.session_state.finances = {}
+
+def next_step():
+    st.session_state.step += 1
+
+def prev_step():
+    st.session_state.step -= 1
+
+
+# ==========================================
+# 5. UI LAYOUT
+# ==========================================
+st.title("✨ Advanced MBTI & Career Assessment Tool")
+st.markdown("ค้นพบศักยภาพที่แท้จริงของคุณผ่าน **Jungian Cognitive Functions** ผสานปัจจัยชีวิตจริง เพื่อหาเส้นทางอาชีพที่ใช่ที่สุด")
+
+# --- STEP 0: INTRO ---
+if st.session_state.step == 0:
+    st.markdown("""
+    <div class="result-card">
+        <h3>ยินดีต้อนรับสู่แบบทดสอบ 16 Personalities เชิงลึก</h3>
+        <p>แบบทดสอบนี้ไม่ได้ใช้แค่ตัวอักษร 4 ตัว แต่เจาะลึกไปถึง <b>Cognitive Functions (การทำงานของสมองทั้ง 8 แบบ)</b><br>
+        ผสมผสานกับเป้าหมายชีวิตและข้อจำกัดทางการเงินของคุณ เพื่อออกแบบเส้นทางอาชีพที่ "เป็นไปได้จริง"</p>
+        <hr>
+        <b>แบบทดสอบแบ่งออกเป็น 4 ส่วน:</b>
+        <ul>
+            <li>ส่วนที่ 1: การทำงานของสมอง (Cognitive Functions) - 80 ข้อ</li>
+            <li>ส่วนที่ 2: ความสนใจด้านวิชาการและทักษะ</li>
+            <li>ส่วนที่ 3: สไตล์การทำงานในอนาคต</li>
+            <li>ส่วนที่ 4: ข้อจำกัดทางการเงินและเงื่อนไขชีวิต</li>
+        </ul>
+        <i>*โปรดตอบตามความเป็นจริงที่เกิดขึ้นกับคุณ ไม่ใช่สิ่งที่คุณอยากเป็น</i>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("เริ่มทำแบบทดสอบ 🚀", on_click=next_step)
+
+# --- STEP 1: COGNITIVE FUNCTIONS ---
+elif st.session_state.step == 1:
+    st.progress(25, text="ส่วนที่ 1/4: Cognitive Functions")
+    st.subheader("ส่วนที่ 1: ประเมินกระบวนการคิด (Cognitive Functions)")
+    st.markdown("ให้คะแนน 1-5 (1 = ไม่ตรงเลย, 5 = ตรงมากที่สุด)")
+    
+    with st.form("cognitive_form"):
+        # We group by function visually, but interleave them in a real app. For code simplicity, group by function.
+        for func, questions in COGNITIVE_QUESTIONS.items():
+            st.markdown(f"#### หมวด {func}")
             for i, q in enumerate(questions):
-                # ใช้ select_slider เพื่อให้ UI คล้าย 16personalities (ซ้าย-ขวา)
-                score = st.slider(q, 1, 5, 3, key=f"{func}_{i}")
-                scores.append(score)
-            cf_results[func] = sum(scores)
-            st.markdown("---")
+                st.session_state.scores[func] += st.slider(f"{q}", 1, 5, 3, key=f"q_{func}_{i}")
+                
+        submit = st.form_submit_button("ถัดไป ➔")
+        if submit:
+            next_step()
+            st.rerun()
 
-    # --- TAB 2: วิชาที่สนใจ ---
-    with tab2:
-        st.markdown('<div class="section-header">ส่วนที่ 2: ความถนัดและความสนใจรายวิชา</div>', unsafe_allow_html=True)
-        subject_choice = st.radio("เลือกหมวดวิชาที่คุณมีความสนใจและตรงกับคุณมากที่สุด:", [
-            "1. หมวดคณิตศาสตร์และคอมพิวเตอร์ (ตรรกะ, โค้ดดิ้ง, วิเคราะห์ข้อมูล)",
-            "2. หมวดวิทยาศาสตร์และเทคโนโลยี (ทดลอง, วิจัย, นวัตกรรมสุขภาพ)",
-            "3. หมวดภาษาและวรรณกรรม (สื่อสาร, เขียน, วัฒนธรรมต่างชาติ)",
-            "4. หมวดสังคมศึกษาและมนุษยศาสตร์ (ประวัติศาสตร์, จิตวิทยา, กฎหมาย)",
-            "5. หมวดศิลปะ ดนตรี และการออกแบบ (ความคิดสร้างสรรค์, สุนทรียภาพ)"
-        ])
-
-    # --- TAB 3: เป้าหมายการทำงาน ---
-    with tab3:
-        st.markdown('<div class="section-header">ส่วนที่ 3: สไตล์เป้าหมายการทำงานในอนาคต</div>', unsafe_allow_html=True)
-        work_goal = st.selectbox("เป้าหมายหลักในการทำงานของคุณคืออะไร?", [
-            "ต้องการอาชีพที่มีความยืดหยุ่นสูง บริหารเวลา/สถานที่เองได้",
-            "ชอบโครงสร้างชัดเจน มั่นคง มีขั้นตอนเป็นระบบ",
-            "ชอบงานท้าทาย แปลกใหม่ ได้คิดสร้างสรรค์สิ่งใหม่",
-            "ต้องการช่วยเหลือ ดูแล หรือรักษาชีวิตผู้อื่น",
-            "ต้องการพัฒนาสังคม ยกระดับความเป็นอยู่",
-            "ต้องการถ่ายทอดความรู้ เป็นแรงบันดาลใจ",
-            "ต้องการเป็น 'ผู้เชี่ยวชาญเฉพาะทาง' ที่หาคนแทนยาก",
-            "เป้าหมายคือขึ้นเป็นผู้นำ ผู้บริหาร องค์กรขนาดใหญ่",
-            "ต้องการสร้างนวัตกรรม หรือธุรกิจของตัวเอง"
-        ])
-
-    # --- TAB 4: ทุนทรัพย์และเงื่อนไข ---
-    with tab4:
-        st.markdown('<div class="section-header">ส่วนที่ 4: เงื่อนไขด้านทุนทรัพย์และภาระทางการเงิน</div>', unsafe_allow_html=True)
-        
-        finance_budget = st.radio("1. งบประมาณค่าใช้จ่ายทางการศึกษา (ต่อเทอม)", [
-            "จำกัดสูง (ไม่เกิน 15,000 บาท/เทอม หรือกู้ กยศ./ทุนเรียนฟรี)",
-            "ปานกลาง (15,000 - 40,000 บาท/เทอม)",
-            "ไม่จำกัด / พร้อมสนับสนุน (40,000 บาทขึ้นไป/เทอม)"
-        ])
-        
-        finance_style = st.radio("2. สไตล์งานที่ให้ความสำคัญหลังเรียนจบ", [
-            "เน้นความมั่นคงสูง (ข้าราชการ, รัฐวิสาหกิจ)",
-            "เน้นรายได้เร็ว / คืนทุนไว (สายเทค, เอกชนคะแนนสูง)",
-            "เน้นอิสระ และความเป็นตัวเอง (ฟรีแลนซ์, ธุรกิจ)"
-        ])
-        
-        finance_burden = st.radio("3. ภาระทางการเงินหลังเรียนจบ", [
-            "มีภาระต้องรีบหางานทำเพื่อส่งเสียครอบครัว/ชำระหนี้",
-            "ไม่มีภาระเร่งด่วน สามารถลองผิดลองถูกได้"
-        ])
-        
-        finance_scholarship = st.radio("4. ความสนใจในทุน 'มีเงื่อนไขผูกพัน'", [
-            "สนใจมาก (พร้อมทำงานใช้ทุนแลกเรียนฟรี)",
-            "ไม่สนใจ / เฉพาะทุนมอบเปล่าเท่านั้น"
-        ])
-        
-        finance_location = st.radio("5. ข้อจำกัดเรื่องการเดินทางและที่พัก", [
-            "จำกัด (ต้องเรียนใกล้บ้าน ประหยัดค่าครองชีพ)",
-            "ยืดหยุ่น (ไปเรียนต่างจังหวัดหรือพักหอได้)"
-        ])
-
-    # ปุ่ม Submit หลัก
-    submit_button = st.form_submit_button(label="🔍 ประมวลผลและวิเคราะห์ผลลัพธ์ทั้งหมด")
-
-# ==========================================
-# 5. การประมวลผลและแสดงผล (เมื่อกด Submit)
-# ==========================================
-if submit_button:
-    with tab5:
-        st.success("ประมวลผลเสร็จสิ้น! เลื่อนดูผลการวิเคราะห์เชิงลึกของคุณได้เลยครับ")
-        
-        # 1. คำนวณ MBTI
-        user_mbti = calculate_mbti(cf_results)
-        user_stack = mbti_stack_logic[user_mbti]
-        
-        st.markdown(f"## 🧠 ผลลัพธ์ MBTI ของคุณคือ: **{user_mbti}**")
-        
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            st.markdown("### กระบวนการทางความคิด (Cognitive Stack)")
-            st.write(f"- **Dominant (ฟังก์ชันหลัก):** {user_stack['Dom']} (ตัวตนหลัก ใช้เป็นธรรมชาติที่สุด)")
-            st.write(f"- **Auxiliary (ฟังก์ชันรอง):** {user_stack['Aux']} (ตัวช่วยคอยสนับสนุนฟังก์ชันหลัก)")
-            st.write(f"- **Tertiary (ฟังก์ชันตติยภูมิ):** {user_stack['Tert']} (จุดพักผ่อน หรือสิ่งที่เริ่มพัฒนาช่วงวัยรุ่น)")
-            st.write(f"- **Inferior (ฟังก์ชันด้อย):** {user_stack['Inf']} (จุดอ่อนที่มักก่อให้เกิดความเครียด แต่พัฒนาได้)")
+# --- STEP 2: INTERESTS ---
+elif st.session_state.step == 2:
+    st.progress(50, text="ส่วนที่ 2/4: ความสนใจ")
+    st.subheader("ส่วนที่ 2: ความสนใจด้านวิชาการและทักษะ")
+    
+    with st.form("interest_form"):
+        st.markdown("ให้คะแนนความสนใจในศาสตร์ต่อไปนี้ (1 = ไม่สนใจเลย, 5 = สนใจมากที่สุด)")
+        for interest in INTERESTS:
+            st.session_state.interests[interest] = st.slider(interest, 1, 5, 3)
             
-            st.markdown("### จุดเด่น & จุดที่ควรระวัง")
-            st.info(f"**จุดเด่น:** สามารถใช้ {user_stack['Dom']} และ {user_stack['Aux']} ในการวิเคราะห์ปัญหาได้อย่างทรงพลัง")
-            st.warning(f"**จุดที่ควรระวัง:** ระวังการมองข้าม หรือใช้ {user_stack['Inf']} ในทางที่ผิดเมื่อเกิดความเครียด")
-
+        col1, col2 = st.columns([1, 8])
+        with col1:
+            st.form_submit_button("⬅️ กลับ", on_click=prev_step)
         with col2:
-            st.markdown("### กราฟ Cognitive Functions 8 ด้าน")
-            fig = generate_radar_chart(cf_results)
-            st.plotly_chart(fig, use_container_width=True)
+            if st.form_submit_button("ถัดไป ➔"):
+                next_step()
+                st.rerun()
 
-        st.markdown("---")
+# --- STEP 3: WORK GOALS ---
+elif st.session_state.step == 3:
+    st.progress(75, text="ส่วนที่ 3/4: เป้าหมายการทำงาน")
+    st.subheader("ส่วนที่ 3: สไตล์การทำงานในอนาคต")
+    
+    with st.form("goals_form"):
+        st.markdown("เลือกเป้าหมายการทำงานสูงสุด 3 อันดับที่คุณต้องการ (เลือกได้หลายข้อ)")
+        st.session_state.goals = st.multiselect("สไตล์การทำงานที่ชอบ", WORK_GOALS, max_selections=3)
         
-        # 2. วิเคราะห์อาชีพและการเรียนต่อ (ผสาน Tรรกศาสตร์จากข้อมูลทั้งหมด)
-        st.markdown("## 💼 บทวิเคราะห์: อาชีพและเส้นทางการศึกษา")
-        
-        # ตรรกะวิเคราะห์ (ตัวอย่างการเชื่อมโยง Logic)
-        analysis_text = f"ด้วยบุคลิกภาพแบบ **{user_mbti}** คุณมีกระบวนการตัดสินใจที่อิงจาก {user_stack['Dom']} เป็นหลัก "
-        analysis_text += f"ประกอบกับความสนใจใน **{subject_choice.split(' ')[1]}** และมีเป้าหมายคือ **'{work_goal}'**\n\n"
-        
-        st.write(analysis_text)
-        
-        st.markdown("### ทำไม MBTI นี้ถึงเหมาะกับเป้าหมายและสายงานนี้?")
-        # วิเคราะห์แบบอิง Logic
-        st.write(f"คนไทป์ {user_mbti} ขับเคลื่อนด้วยฟังก์ชัน {user_stack['Dom']}-{user_stack['Aux']} ซึ่งตรงกับความต้องการของสายงานที่คุณเลือก ที่ต้องการทักษะด้านนี้โดยเฉพาะ การที่คุณเลือกเป้าหมาย '{work_goal}' สะท้อนให้เห็นว่าฟังก์ชันของคุณกำลังมองหาสภาพแวดล้อมที่สอดคล้องกับธรรมชาติของตัวคุณเอง")
+        col1, col2 = st.columns([1, 8])
+        with col1:
+            st.form_submit_button("⬅️ กลับ", on_click=prev_step)
+        with col2:
+            if st.form_submit_button("ถัดไป ➔"):
+                if len(st.session_state.goals) == 0:
+                    st.error("กรุณาเลือกอย่างน้อย 1 ข้อ")
+                else:
+                    next_step()
+                    st.rerun()
 
-        st.markdown("### 🎓 คำแนะนำเรื่องมหาวิทยาลัยและทุน (ตามเงื่อนไขของคุณ)")
+# --- STEP 4: FINANCIALS ---
+elif st.session_state.step == 4:
+    st.progress(100, text="ส่วนที่ 4/4: เงื่อนไขชีวิต")
+    st.subheader("ส่วนที่ 4: ข้อจำกัดทางการเงินและเงื่อนไขชีวิต")
+    
+    with st.form("financials_form"):
+        st.session_state.finances["budget"] = st.radio("1. งบประมาณการศึกษา:", FINANCIALS["budget"])
+        st.session_state.finances["goal"] = st.radio("2. เป้าหมายหลังเรียนจบ:", FINANCIALS["goal"])
+        st.session_state.finances["burden"] = st.radio("3. ภาระทางบ้าน:", FINANCIALS["burden"])
+        st.session_state.finances["scholarship"] = st.radio("4. ความสนใจทุนผูกพัน (ใช้ทุนแลกเรียนฟรี):", FINANCIALS["scholarship"])
+        st.session_state.finances["location"] = st.radio("5. ข้อจำกัดการเดินทาง/ที่พัก:", FINANCIALS["location"])
         
-        # Logic การเงิน
-        if "จำกัดสูง" in finance_budget:
-            st.write("**สถานะการเงิน:** งบประมาณจำกัด")
-            st.write("- **เส้นทางที่แนะนำ:** มหาวิทยาลัยของรัฐ (เช่น ม.ราชภัฏ, ม.เทคโนโลยีราชมงคล, หรือมหาวิทยาลัยเปิดอย่าง ม.รามคำแหง / มสธ.)")
-            if "สนใจมาก" in finance_scholarship:
-                st.write("- **ทุนแนะนำ:** ทุนพยาบาลกองทัพ, ทุนครูคืนถิ่น, หรือโครงการที่จบแล้วมีงานรองรับและใช้ทุน")
-            st.write("- **ข้อควรระวัง:** แนะนำให้ติดต่อกองทุน กยศ. ตั้งแต่เนิ่นๆ เนื่องจากคุณมีเป้าหมายในการทำงานที่ต้องสร้างความมั่นคง")
-        elif "ปานกลาง" in finance_budget:
-            st.write("**สถานะการเงิน:** ปานกลาง (รับภาระ ม.รัฐ ได้)")
-            st.write("- **เส้นทางที่แนะนำ:** มหาวิทยาลัยรัฐบาลทั่วไป (ผ่านระบบ TCAS) เลือกคณะที่ค่าเทอมอยู่ในเกณฑ์มาตรฐาน")
-            if "เน้นรายได้เร็ว" in finance_style:
-                st.write("- **คำแนะนำเพิ่มเติม:** ควรเลือกคณะสายวิชาชีพเฉพาะ เช่น วิศวกรรมศาสตร์ หรือ วิทยาการคอมพิวเตอร์ ที่ให้ผลตอบแทนหลังเรียนจบสูงและไว")
-        else:
-            st.write("**สถานะการเงิน:** พร้อมสนับสนุน / ไม่จำกัด")
-            st.write("- **เส้นทางที่แนะนำ:** สามารถพิจารณามหาวิทยาลัยเอกชนชั้นนำ หรือหลักสูตรนานาชาติ (International Program) ในมหาวิทยาลัยรัฐได้")
-            st.write("- **ข้อได้เปรียบ:** คุณมีอิสระในการเลือกเรียนสิ่งที่ชอบได้อย่างเต็มที่ตามวิชาที่คุณถนัด โดยไม่ต้องกังวลภาระหนี้สิน")
+        col1, col2 = st.columns([1, 8])
+        with col1:
+            st.form_submit_button("⬅️ กลับ", on_click=prev_step)
+        with col2:
+            if st.form_submit_button("ประมวลผลผลลัพธ์ 🎉"):
+                next_step()
+                st.rerun()
 
-        if "จำกัด" in finance_location:
-            st.info("💡 **ทริค:** เนื่องจากคุณมีข้อจำกัดเรื่องการเดินทาง ควรโฟกัสโควตาพื้นที่ (Quota) ของมหาวิทยาลัยในภูมิภาคของคุณ จะช่วยเพิ่มโอกาสสอบติดและประหยัดค่าใช้จ่ายได้มาก")
+# --- STEP 5: RESULTS DASHBOARD ---
+elif st.session_state.step == 5:
+    st.balloons()
+    
+    # Run Calculations
+    mbti_type, function_stack = calculate_mbti(st.session_state.scores)
+    radar_chart = plot_radar(st.session_state.scores)
+    recommendations = generate_recommendation(
+        mbti_type, 
+        st.session_state.interests, 
+        st.session_state.goals, 
+        st.session_state.finances
+    )
+    
+    st.markdown("<h2 style='text-align: center; color: #2c3e50;'>ผลการวิเคราะห์ส่วนบุคคลของคุณ</h2><br>", unsafe_allow_html=True)
+    
+    tab1, tab2, tab3 = st.tabs(["🧑‍💼 MBTI Profile", "🧠 Cognitive Functions", "🎯 Career & Education Path"])
+    
+    with tab1:
+        st.markdown(f"""
+        <div class="result-card">
+            <p style="text-align:center; font-size: 1.2rem; margin-bottom: -15px;">บุคลิกภาพของคุณคือ</p>
+            <h1 class="type-header" style="text-align:center;">{mbti_type}</h1>
+            <hr>
+            <h4>โครงสร้างกระบวนการคิด (Function Stack)</h4>
+            <ul>
+                <li><b>Dominant (ฟังก์ชันหลัก):</b> {function_stack[0]} - เป็นตัวขับเคลื่อนหลัก พลังงานธรรมชาติของคุณ</li>
+                <li><b>Auxiliary (ฟังก์ชันรอง):</b> {function_stack[1]} - เครื่องมือช่วยตัดสินใจและรักษาสมดุล</li>
+                <li><b>Tertiary (ฟังก์ชันอันดับสาม):</b> {function_stack[2]} - จุดที่คุณใช้พักผ่อน หรือพัฒนาเมื่อเติบโตขึ้น</li>
+                <li><b>Inferior (ฟังก์ชันด้อย):</b> {function_stack[3]} - จุดอ่อนไหวและสิ่งที่ทำให้คุณเครียดได้ง่าย</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with tab2:
+        st.markdown("""
+        <div class="result-card">
+            <h4>กราฟแสดงการทำงานของสมอง (Cognitive Functions Radar)</h4>
+            <p>ยิ่งกราฟกว้างในจุดใด แสดงว่าคุณมีแนวโน้มใช้กระบวนการคิดรูปแบบนั้นเป็นธรรมชาติมากที่สุด</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.plotly_chart(radar_chart, use_container_width=True)
+        
+    with tab3:
+        st.markdown("""
+        <div class="result-card">
+            <h3 style="color:#27ae60;">💼 คำแนะนำสายอาชีพ (Career Recommendations)</h3>
+            <p>วิเคราะห์จากโครงสร้างบุคลิกภาพและความสนใจของคุณ:</p>
+            <p style="font-size: 1.1rem; padding: 10px; background-color: #f8f9fa; border-left: 5px solid #27ae60;">
+                <b>สายอาชีพที่เหมาะสม:</b><br>{career}
+            </p>
+            <hr>
+            <h3 style="color:#2980b9;">🎓 เส้นทางการศึกษาที่แนะนำ (Education Strategy)</h3>
+            <p>วิเคราะห์จากงบประมาณ ข้อจำกัดทางบ้าน และไลฟ์สไตล์:</p>
+            <p style="font-size: 1.1rem; padding: 10px; background-color: #f8f9fa; border-left: 5px solid #2980b9;">
+                <b>รูปแบบมหาวิทยาลัย/สถาบัน:</b><br>{education}
+            </p>
+            <p style="font-size: 1.1rem; padding: 10px; background-color: #f8f9fa; border-left: 5px solid #e67e22;">
+                <b>กลยุทธ์และคำแนะนำเพิ่มเติม:</b><br>{strategy}
+            </p>
+        </div>
+        """.format(
+            career=recommendations["career"],
+            education=recommendations["education"],
+            strategy=recommendations["strategy"]
+        ), unsafe_allow_html=True)
+        
+    if st.button("🔄 ทำแบบทดสอบอีกครั้ง"):
+        st.session_state.step = 0
+        st.session_state.scores = {f: 0 for f in COGNITIVE_QUESTIONS.keys()}
+        st.rerun()
