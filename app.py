@@ -1,503 +1,606 @@
 import streamlit as st
-import math
+from questions import (
+    COGNITIVE_QUESTIONS, 
+    SUBJECT_QUESTIONS, 
+    HOBBY_QUESTIONS, 
+    GOAL_QUESTIONS, 
+    FINANCIAL_QUESTIONS, 
+    MBTI_DESCRIPTIONS
+)
 
-# --- การตั้งค่าหน้าเว็บ ---
-st.set_page_config(page_title="MBTI & Aptitude Test", page_icon="🧠", layout="wide")
+# ---------------------------------------------------------
+# 1. Page Configuration
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="ระบบวิเคราะห์อาชีพด้วยตรรกศาสตร์ MBTI & Subject Logic",
+    page_icon="🎓",
+    layout="wide"
+)
 
-# --- CSS แบบ 16Personalities ---
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap');
-    
-    html, body, [class*="st-"] {
-        font-family: 'Prompt', sans-serif;
-    }
-    #MainMenu, footer, header { visibility: hidden; }
-    .block-container {
-        padding-top: 2rem;
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    .stProgress > div > div > div > div {
-        background-color: #4f46e5;
-    }
-    .card {
-        background: white;
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        margin-bottom: 2rem;
-        border: 1px solid #f0f0f0;
-    }
-    .btn-next {
-        background-color: #4f46e5;
-        color: white;
-        border: none;
-        padding: 12px 30px;
-        border-radius: 8px;
-        font-size: 18px;
-        font-weight: 600;
-        cursor: pointer;
-        width: 100%;
-        transition: background 0.3s;
-    }
-    .btn-next:hover {
-        background-color: #4338ca;
-    }
-    .trait-bar-container {
-        display: flex;
-        align-items: center;
-        margin-bottom: 15px;
-    }
-    .trait-label {
-        width: 50px;
-        font-weight: bold;
-        color: #333;
-    }
-    .trait-bar-bg {
-        flex-grow: 1;
-        height: 10px;
-        background-color: #eee;
-        border-radius: 5px;
-        margin: 0 15px;
-        overflow: hidden;
-    }
-    .trait-bar-fill {
-        height: 100%;
-        border-radius: 5px;
-        transition: width 1s ease-in-out;
-    }
-    .trait-pct {
-        width: 50px;
-        text-align: right;
-        font-weight: bold;
-        color: #666;
-    }
-</style>
-""", unsafe_allow_html=True)
+# ---------------------------------------------------------
+# 2. Session State Management
+# ---------------------------------------------------------
+if 'step' not in st.session_state:
+    st.session_state.step = 1
+if 'mbti_result' not in st.session_state:
+    st.session_state.mbti_result = "INTJ"
+if 'category_scores' not in st.session_state:
+    st.session_state.category_scores = {}
 
-# --- ข้อมูลโจทย์ ส่วนที่ 1: Cognitive Functions (80 ข้อ) ---
-questions_p1 = [
-    # Ne (1-10)
-    "คุณมักจะเชื่อมโยงเรื่องราวที่ไม่เกี่ยวข้องกันเข้าด้วยกันได้อย่างรวดเร็ว",
-    "คุณชอบการระดมสมอง และมองหาไอเดียใหม่ๆ มากกว่าการลงมือทำสิ่งเดิม",
-    "คุณมักจะพูดว่า ถ้าเกิดว่า... เพื่อหาทางเลือกใหม่ๆ อยู่เสมอ",
-    "คุณรู้สึกเบื่อหน่ายได้ง่ายเมื่อต้องทำงานที่ซ้ำซากจำเจน",
-    "คุณมองเห็นโอกาสหรือความเป็นไปได้หลายอย่างในเหตุการณ์เดียวจนบางครั้งเลือกไม่ถูก",
-    "คุณชอบการสนทนาที่กระโดดจากเรื่องหนึ่งไปอีกเรื่องหนึ่งตามความเกี่ยวเนื่องของไอเดีย",
-    "คุณมักจะมองเห็นศักยภาพที่ซ่อนอยู่ในตัวคนหรือโปรเจกต์ต่างๆ",
-    "คุณให้ความสำคัญกับ 'นวัตกรรม' และ 'ความแปลกใหม่' มากกว่าวิถีปฏิบัติดั้งเดิม",
-    "คุณชอบการทดลองทำสิ่งต่างๆ ด้วยวิธีที่แตกต่างไปจากเดิมทุกครั้ง",
-    "คุณมักจะมีแรงบันดาลใจพุ่งพล่านในช่วงเริ่มต้นโปรเจกต์ใหม่ แต่ยากที่จะทำให้จบ",
-    # Ni (11-20)
-    "คุณมักจะมีอาการ 'อ๋อ!' หรือเข้าใจเรื่องยากๆ ได้เองโดยอธิบายไม่ได้ว่ารู้ได้อย่างไร",
-    "คุณให้ความสำคัญกับความหมายที่ซ่อนอยู่เบื้องหลังเหตุการณ์มากกว่าสิ่งที่เห็นตรงหน้า",
-    "คุณมักจะคาดการณ์แนวโน้มในอนาคตได้แม่นยำจากรูปแบบ (Patterns) ที่คุณสังเกตเห็น",
-    "คุณชอบมองภาพรวม มากกว่าการลงไปเจาะลึกในรายละเอียดเล็กๆ น้อยๆ",
-    "คุณมักจะใช้สัญลักษณ์หรืออุปมาอุปไมยในการทำความเข้าใจโลก",
-    "คุณมีความเชื่อมั่นในสัญชาตญาณภายในของตนเองอย่างแรงกล้า",
-    "คุณมักจะจดจ่อกับเป้าหมายในระยะยาวมากกว่าความพึงพอใจในปัจจุบัน",
-    "คุณพยายามหา 'ความจริงเพียงหนึ่งเดียว' หรือแก่นแท้ของสรรพสิ่ง",
-    "คุณมักจะรู้สึกว่าตัวเองมีความเข้าใจในเรื่องที่ซับซ้อนอย่างลึกซึ้งกว่าคนทั่วไป",
-    "คุณชอบวางแผนล่วงหน้าและมักจะมีวิสัยทัศน์ที่ชัดเจนว่าชีวิตในอีก 5-10 ปีข้างหน้าจะเป็นอย่างไร",
-    # Se (21-30)
-    "คุณตอบสนองต่อสภาพแวดล้อมรอบตัวได้อย่างรวดเร็วและว่องไว",
-    "คุณชอบกิจกรรมที่ท้าทายทางกายภาพหรือกีฬาที่ตื่นเต้นเร้าใจ",
-    "คุณชอบสิ่งที่จับต้องได้จริงมากกว่าทฤษฎีที่จับต้องไม่ได้",
-    "คุณสังเกตเห็นรายละเอียดทางกายภาพ (สี เสียง กลิ่น) ของสิ่งรอบตัวได้อย่างชัดเจน",
-    "คุณชอบการเรียนรู้ผ่านการลงมือทำจริง มากกว่าการอ่านตำรา",
-    "คุณมักจะตัดสินใจตามสถานการณ์เฉพาะหน้าและใช้ชีวิตอยู่กับปัจจุบัน",
-    "คุณมีความสามารถในการปรับตัวเข้ากับสภาพแวดล้อมใหม่ๆ ได้อย่างดีเยี่ยม",
-    "คุณชื่นชอบสุนทรียภาพและความรื่นรมย์ทางประสาทสัมผัส (อาหารอร่อย เสื้อผ้าสวย)",
-    "คุณไม่ชอบการรอคอยและต้องการเห็นผลลัพธ์ทันที",
-    "คุณมักจะสังเกตเห็นการเปลี่ยนแปลงเล็กๆ น้อยๆ ในสิ่งแวดล้อมที่คนอื่นอาจมองข้าม",
-    # Si (31-40)
-    "คุณมีความจำที่แม่นยำเกี่ยวกับเหตุการณ์ในอดีตหรือรายละเอียดของข้อมูล",
-    "คุณให้ความสำคัญกับความมั่นคงและประเพณีดั้งเดิม",
-    "คุณชอบทำสิ่งต่างๆ ตามขั้นตอนหรือวิธีการที่เคยทำสำเร็จมาแล้ว",
-    "คุณรู้สึกอุ่นใจเมื่อได้ทำกิจวัตรประจำวันที่คุ้นเคย",
-    "คุณสังเกตเห็นความผิดปกติในร่างกายของตนเองได้อย่างรวดเร็ว (เช่น อุณหภูมิหรือความหิว)",
-    "คุณมักจะเปรียบเทียบสถานการณ์ปัจจุบันกับเหตุการณ์ที่เคยเกิดขึ้นในอดีตเสมอ",
-    "คุณเป็นคนละเอียดรอบคอบและให้ความสำคัญกับความถูกต้องของข้อมูล",
-    "คุณชอบการวางแผนที่ชัดเจนและมีโครงสร้างที่แน่นอน",
-    "คุณมักจะเก็บรวบรวมสิ่งของที่มีคุณค่าทางจิตใจหรือมีความทรงจำร่วมด้วย",
-    "คุณให้ความเชื่อถือในข้อมูลที่ผ่านการพิสูจน์แล้วมากกว่าไอเดียใหม่ๆ ที่ยังไม่เคยลอง",
-    # Te (41-50)
-    "คุณให้ความสำคัญกับ 'ผลลัพธ์' และ 'ประสิทธิภาพ' ในการทำงานเป็นอันดับแรก",
-    "คุณชอบจัดระเบียบสภาพแวดล้อม แผนงาน หรือคน เพื่อให้บรรลุเป้าหมาย",
-    "คุณใช้เกณฑ์ที่เป็นรูปธรรมและตรรกะภายนอกในการตัดสินใจ",
-    "คุณมักจะพูดตรงไปตรงมาและเน้นความจริงมากกว่าการรักษาน้ำใจ",
-    "คุณชอบสร้างแผนภูมิ รายการสิ่งที่ต้องทำ หรือตารางเวลา",
-    "คุณตัดสินใจได้รวดเร็วและเด็ดขาดเมื่อมีข้อมูลที่จำเป็นครบถ้วน",
-    "คุณรู้สึกหงุดหงิดเมื่อเห็นความไม่เป็นระเบียบหรือการทำงานที่ไม่มีประสิทธิภาพ",
-    "คุณชอบใช้ทรัพยากรที่มีอยู่ให้เกิดประโยชน์สูงสุด",
-    "คุณมักจะใช้ 'ข้อมูลสถิติ' หรือ 'หลักฐานเชิงประจักษ์' เพื่อสนับสนุนความคิดเห็นของคุณ",
-    "คุณมองว่ากฎเกณฑ์และมาตรฐานเป็นสิ่งจำเป็นเพื่อให้สังคมหรือองค์กรขับเคลื่อนไปได้",
-    # Ti (51-60)
-    "คุณชอบแยกแยะส่วนประกอบของสิ่งต่างๆ เพื่อดูว่ามันทำงานอย่างไร",
-    "คุณให้ความสำคัญกับความถูกต้องแม่นยำทางตรรกะมากกว่าผลลัพธ์ที่รวดเร็ว",
-    "คุณมีโครงสร้างตรรกะส่วนตัวในการทำความเข้าใจโลก",
-    "คุณมักจะตั้งคำถามกับกฎเกณฑ์หรือความรู้ทั่วไปถ้ามันดูไม่สมเหตุสมผลสำหรับคุณ",
-    "คุณชอบแก้ปัญหาที่ซับซ้อนด้วยการคิดวิเคราะห์อย่างเป็นระบบในหัว",
-    "คุณต้องการคำนิยามที่ชัดเจนและแม่นยำในการสนทนาหรือการเรียนรู้",
-    "คุณสามารถวิจารณ์ความคิดของตัวเองได้อย่างเป็นกลางเพื่อหาจุดบกพร่อง",
-    "คุณชอบความรู้เพื่อความรู้ มากกว่าการนำไปใช้ประโยชน์",
-    "คุณมักจะดูเหมือนคนสันโดษเมื่อต้องใช้สมาธิในการคิดวิเคราะห์เรื่องยากๆ",
-    "คุณเก่งในการหาจุดบกพร่องทางตรรกะในคำพูดหรือข้อโต้แย้งของผู้อื่น",
-    # Fe (61-70)
-    "คุณให้ความสำคัญกับความรู้สึกของคนรอบข้างและบรรยากาศในกลุ่ม",
-    "คุณพยายามรักษาความกลมกลืน และหลีกเลี่ยงความขัดแย้งในสังคม",
-    "คุณสามารถรับรู้ถึงอารมณ์และความต้องการของผู้อื่นได้โดยสัญชาตญาณ",
-    "คุณมักจะปรับพฤติกรรมของตนเองเพื่อให้ผู้อื่นรู้สึกสบายใจ",
-    "คุณให้ความสำคัญกับมารยาททางสังคมและค่านิยมของส่วนรวม",
-    "คุณรู้สึกมีความสุขเมื่อได้ช่วยเหลือหรือดูแลคนอื่น",
-    "คุณเก่งในการประสานรอยร้าวและทำให้ผู้คนกลับมาเข้าใจกัน",
-    "คุณมักจะตัดสินใจโดยคำนึงถึงผลกระทบที่จะเกิดขึ้นกับความสัมพันธ์ของคนในกลุ่ม",
-    "คุณต้องการการยอมรับหรือคำยืนยันจากคนรอบข้างเพื่อให้มั่นใจในตัวเอง",
-    "คุณมักจะแสดงความรู้สึกออกมาให้คนอื่นรับรู้ได้ง่ายผ่านสีหน้าหรือท่าทาง",
-    # Fi (71-80)
-    "คุณมีความเชื่อและค่านิยมส่วนตัวที่ยึดถืออย่างเคร่งครัดและไม่เปลี่ยนแปลงง่ายๆ",
-    "คุณให้ความสำคัญกับ 'ความจริงแท้' และการเป็นตัวของตัวเอง",
-    "คุณมักจะประเมินสิ่งต่างๆ ว่า 'ดี' หรือ 'เลว' ตามความรู้สึกภายในของคุณเอง",
-    "คุณมีความเห็นอกเห็นใจผู้อื่นอย่างลึกซึ้ง โดยเฉพาะคนที่ถูกเอาเปรียบ",
-    "คุณมักจะเก็บความรู้สึกที่แท้จริงไว้ภายในและแชร์ให้กับคนที่ไว้ใจจริงๆ เท่านั้น",
-    "คุณไม่ชอบการทำตามกระแสสังคมถ้าสิ่งนั้นขัดกับความรู้สึกส่วนตัวของคุณ",
-    "คุณมีความเข้าใจในอารมณ์ความรู้สึกที่ซับซ้อนของมนุษย์อย่างละเอียดอ่อน",
-    "คุณแสวงหาความหมายและความสอดคล้องระหว่างการกระทำกับค่านิยมภายใน",
-    "คุณไวต่อความรู้สึกที่ดู 'เสแสร้ง' หรือ 'ไม่จริงใจ' ของคนอื่น",
-    "คุณมักจะตัดสินใจโดยถามตัวเองว่า 'สิ่งนี้มันใช่ตัวเราจริงๆ หรือไม่?'"
-]
-
-# --- ข้อมูลโจทย์ ส่วนที่ 2: ความถนัดรายวิชา (35 ข้อ) ---
-questions_p2 = [
-    # คณิตศาสตร์ (1-7)
-    "เน้นตรรกะ ตัวเลข การแก้ปัญหาเป็นขั้นตอน และการคิดเชิงระบบ",
-    "การแก้โจทย์เชิงตรรกะ: เวลาเจอโจทย์คณิตศาสตร์ ปริศนาตัวเลข หรือเกมซูโดกุ รู้สึกท้าทายและอยากคิดหาคำตอบมากกว่ารู้สึกเครียด",
-    "ความคลั่งไคล้ในระบบ: ชอบค้นหา 'รูปแบบ' (Patterns) ความสัมพันธ์ของตัวเลข หรือสูตรคำนวณที่ช่วยลดเวลาการทำงาน",
-    "การคิดเป็นขั้นตอน (Algorithm): เวลาทำอะไรสักอย่าง มักจะคิดวางแผนเป็นลำดับขั้นตอน 1, 2, 3 ชัดเจน ชอบความมีระเบียบและเป็นเหตุเป็นผล",
-    "ความสนใจในเทคโนโลยี: สงสัยว่าแอปพลิเคชัน เกม หรือเว็บไซต์ทำงานอย่างไร และอยากลองเรียนรู้การเขียนโค้ด (Coding) หรือสร้างซอฟต์แวร์",
-    "การจัดการข้อมูล: สนุกกับการรวบรวมข้อมูล นำตัวเลขมาทำตาราง สถิติ หรือกราฟวิเคราะห์เพื่อดูแนวโน้มต่างๆ",
-    "ความอดทนในการแก้ Bug: เวลาคอมพิวเตอร์ หรืออุปกรณ์เทคโนโลยีมีปัญหา ชอบที่จะค้นหาสาเหตุและหาวิธีแก้ด้วยตัวเองจนสำเร็จ",
-    # วิทยาศาสตร์ (8-14)
-    "เน้นความตั้งคำถาม การทดลอง ช่างสังเกต ธรรมชาติ และนวัตกรรม",
-    "ตั้งคำถามกับสิ่งรอบตัว: มักจะสงสัยว่า 'ทำไมสิ่งนี้ถึงเกิดขึ้น?' เช่น ทำไมฟ้าผ่า, ร่างกายมนุษย์ทำงานอย่างไร",
-    "ชอบการลงมือทดลอง: สนุกกับบทเรียนที่ได้เข้าห้องปฏิบัติการ (Lab) ได้ใช้อุปกรณ์ ผสมสาร หรือศึกษาโครงสร้างมากกว่าการนั่งฟังทฤษฎี",
-    "การสังเกตและเก็บข้อมูล: เป็นคนช่างสังเกต ละเอียดถี่ถ้วน ละเอียดยิบกับรายละเอียดเล็กๆ น้อยๆ ที่คนอื่นอาจมองข้าม",
-    "สนใจในโลกธรรมชาติและชีวิต: มีความสนใจลึกซึ้งเกี่ยวกับสิ่งมีชีวิต พันธุศาสตร์ สิ่งแวดล้อม การอนุรักษ์ธรรมชาติ หรือดาราศาสตร์",
-    "ความสนใจด้านสุขภาพและสิ่งประดิษฐ์: สนใจเรื่องกลไกร่างกาย การรักษาโรค หรือการคิดค้นนวัตกรรมใหม่ๆ เพื่อช่วยชีวิตมนุษย์",
-    "ยึดมั่นในหลักฐาน: เชื่อสิ่งต่างๆ ด้วย 'หลักฐานทางวิทยาศาสตร์และข้อมูลเชิงประจักษ์' มากกว่าคำบอกเล่าลอยๆ",
-    # ภาษา (15-21)
-    "เน้นการสื่อสาร พลังแห่งคำพูด การอ่าน วรรณกรรม และต่างวัฒนธรรม",
-    "หลงใหลในตัวอักษร: รักการอ่าน ไม่ว่าจะเป็นหนังสือวรรณกรรม นิยาย บทความ หรือข่าวสาร และสามารถจดจ่อกับการอ่านได้เป็นเวลานาน",
-    "เสน่ห์ในการเล่าเรื่อง: สามารถอธิบายเรื่องยากๆ ให้เข้าใจง่าย หรือเล่าเรื่องราวต่างๆ ได้น่าติดตาม ทั้งการพูดและการเขียน",
-    "การเรียนรู้ภาษาใหม่: สนุกกับการเรียนภาษาต่างประเทศ จดจำคำศัพท์ได้ไว ชอบเลียนแบบการออกเสียง และสนใจโครงสร้างไวยากรณ์",
-    "ความอ่อนไหวต่อภาษา: สังเกตเห็นการใช้คำผิด คำถูก การสะกดคำ หรืออารมณ์ความรู้สึกที่ซ่อนอยู่ในข้อความได้อย่างรวดเร็ว",
-    "สนใจวัฒนธรรมที่หลากหลาย: อยากรู้เกี่ยวกับประวัติศาสตร์ภาษา วรรณคดีต่างชาติ วัฒนธรรม และวิถีชีวิตของผู้คนต่างเมือง",
-    "ความคิดสร้างสรรค์ผ่านงานเขียน: ชอบแต่งเรื่อง แต่งกลอน เขียนไดอารี่ หรือเขียนบล็อกเพื่อแสดงความคิดเห็นและความรู้สึก",
-    # สังคม (22-28)
-    "เน้นความเข้าใจมนุษย์ ปัญหาสังคม ประวัติศาสตร์ กฎหมาย และจิตวิทยา",
-    "ความสนใจในพฤติกรรมมนุษย์: ชอบสังเกตและสงสัยว่าทำไมคนเราถึงคิด พูด หรือแสดงพฤติกรรมแบบนั้น",
-    "ใส่ใจปัญหาสังคม: ติดตามข่าวสารบ้านเมือง สนใจเรื่องความยุติธรรม สิทธิมนุษยชน และอยากมีส่วนร่วมในการแก้ไขปัญหาสังคม",
-    "ชอบเรื่องราวในอดีต: สนุกกับการเรียนรู้ประวัติศาสตร์ ความเป็นมาของประเทศ โลก หรือการเปลี่ยนแปลงของอารยธรรมมนุษย์",
-    "การถกเถียงด้วยเหตุผล: ชอบการโต้แย้ง (Debate) การวิเคราะห์ข้อกฎหมาย หรือการแลกเปลี่ยนมุมมองทางการเมืองและสังคม",
-    "ความเห็นอกเห็นใจผู้อื่น (Empathy): เป็นผู้ฟังที่ดี คนอื่นมักจะมาขอคำปรึกษา และรู้สึกอยากช่วยเหลือผู้คนที่ด้อยโอกาส",
-    "ภาพรวมของระบบโลก: สนใจเรื่องภูมิศาสตร์ เศรษฐศาสตร์ การบริหารจัดการองค์กร หรือความสัมพันธ์ระหว่างประเทศ",
-    # ศิลปะ (29-35)
-    "เน้นจินตนาการ สุนทรียภาพ สื่อการมองเห็น สุนทรียะทางเสียง และความอิสระ",
-    "ความคิดสร้างสรรค์สูง: มักจะมีไอเดียแปลกใหม่ ชอบคิดนอกกรอบ และมองสิ่งต่างๆ ในมุมมองที่แตกต่างจากคนอื่น",
-    "สุนทรียภาพทางการมองเห็น (Visual Art): ชอบการวาดรูป ถ่ายภาพ แต่งรูป ออกแบบเสื้อผ้า ออกแบบกราฟิก หรือจัดวางสิ่งของให้สวยงาม",
-    "ความหลงใหลในเสียงเพลง: ตอบสนองต่อดนตรีอย่างลึกซึ้ง ชอบเล่นเครื่องดนตรี ร้องเพลง แต่งเพลง หรือแยกแยะเสียงเครื่องดนตรือในเพลงได้ดี",
-    "การแสดงออกทางการแสดง: ชอบการเต้น การแสดงละคร หรือการใช้ท่าทางและอารมณ์เพื่อสื่อสารความรู้สึก",
-    "การสร้างสรรค์ด้วยมือ (Craftsmanship): ชอบงานประดิษฐ์ งานปั้น งานปักผ้า หรือการสร้างวัตถุ 3 มิติด้วยมือตัวเอง",
-    "ต้องการอิสระในการทำงาน: ทำงานได้ดีที่สุดในสภาพแวดล้อมที่ยืดหยุ่น เปิดโอกาสให้ปลดปล่อยจินตนาการ โดยไม่มีกฎเกณฑ์ตายตัว"
-]
-
-# --- ฐานข้อมูลผลลัพธ์ MBTI (16 ประพจน์) ---
-mbti_descriptions = {
-    "INTJ": "นักคิดเชิงกลยุทธ์ (The Architect): มีวิสัยทัศน์อันชาญฉลาด วางแผนระยะยาวเป็นเลิศ ใช้ตรรกะในการสร้างระบบ และมีความต้องการสูงทั้งต่อตนเองและผู้อื่น",
-    "INTP": "นักตรรกะ (The Logician): ผู้สร้างนวัตกรรมทางความคิด ชอบค้นหาความจริงทางตรรกะอย่างลึกซึ้ง มีความคิดยืดหยุ่น และมักจะสนใจทฤษฎีมากกว่าการปฏิบัติ",
-    "ENTJ": "ผู้บัญชาการ (The Commander): ผู้นำที่เก่งกาจ มีความกล้าหาญในการตัดสินใจ ชอบจัดระเบียบผู้คนและทรัพยากรเพื่อบรรลุเป้าหมายอย่างมีประสิทธิภาพสูงสุด",
-    "ENTP": "นักถกเถียง (The Debater): ฉลาดรอบรู้และชอบท้าทายสถานะที่เป็นอยู่ มีไหวพริบดี ชอบเล่นกับคำพูดและไอเดีย มองหาโอกาสในการปฏิวัติวิธีการทำสิ่งต่างๆ",
-    "INFJ": "ผู้สนับสนุน (The Advocate): มีจิตวิญญาณลึกลับและเข้าใจคนเป็นอย่างดี มองหาความหมายในชีวิต และมุ่งมั่นที่จะช่วยเหลือผู้อื่นด้วยวิสัยทัศน์ที่ชัดเจน",
-    "INFP": "นักเสียงข้างใน (The Mediator): ผู้นำแห่งจินตนาการ มีค่านิยมส่วนตัวที่แข็งแกร่ง ทำงานเพื่อสร้างสันติภาพและความหมายในโลก ชอบการแสดงออกผ่านงานสร้างสรรค์",
-    "ENFJ": "ผู้ให้กำลังใจ (The Protagonist): ผู้นำที่มีเสน่ห์และเข้าถึงอารมณ์ผู้อื่นได้ดี มีความสามารถในการสร้างแรงบันดาลใจและรวบรวมผู้คนเพื่อไปสู่เป้าหมายที่ดีงาม",
-    "ENFP": "ผู้สร้างแรงบันดาลใจ (The Campaigner): มีพลังงานสดใสและความคิดสร้างสรรค์อันไม่รู้จบ ชอบเชื่อมโยงกับคนอื่น มองโลกในแง่ดี และหาความสุขได้จากทุกสถานการณ์",
-    "ISTJ": "ผู้จัดการ (The Logistician): ผู้ทำงานที่เชื่อถือได้และมีหลักการ ให้ความสำคัญกับข้อมูลที่ถูกต้อง รักษามาตรฐาน และเป็นผู้พิทักษ์ประเพณีและระเบียบวินัย",
-    "ISFJ": "ผู้ป้องกัน (The Defender): ผู้ปกป้องที่อบอุ่นและเอาใจใส่ มีความทรงจำที่แม่นยำ ชอบช่วยเหลือผู้อื่นอย่างเป็นระบบ และพยายามสร้างความสุขให้คนรอบข้าง",
-    "ESTJ": "ผู้บริหาร (The Executive): ผู้จัดการที่มีความเด็ดขาด เคร่งครัดกับกฎระเบียบและมาตรฐาน ชอบจัดการผู้คนและโครงการเพื่อให้บรรลุผลลัพธ์ที่มีหลักการ",
-    "ESFJ": "ผู้กลาง (The Consul): ผู้ดูแลทางสังคมที่มีความเอาใจใส่สูง ชอบสร้างความสัมพันธ์ที่ดี รักษาความกลมกลืนในกลุ่ม และให้ความสำคัญกับความต้องการของคนอื่น",
-    "ISTP": "นักประดิษฐ์ (The Virtuoso): ผู้เชี่ยวชาญเชิงปฏิบัติ ชอบสำรวจระบบด้วยมือและตา มีความเข้าใจเชิงกลไกที่ยอดเยี่ยม และชอบแก้ปัญหาในเวลาจริง",
-    "ISFP": "นักผจญภัย (The Adventurer): ศิลปินที่อยู่กับปัจจุบัน มีความรู้สึกลึกซึ้งและเป็นตัวของตัวเองสูง ชอบสำรวจโลกด้วยประสาทสัมผัสและสร้างสรรค์สิ่งต่างๆ อย่างสันโดษ",
-    "ESTP": "นักสำรวจ (The Entrepreneur): ผู้กระทำที่ฉลาดหลักแหลม ชอบการเคลื่อนไหวและความเสี่ยง ตอบสนองต่อสิ่งแวดล้อมได้รวดเร็ว และกินใจคนเก่ง",
-    "ESFP": "ผู้บันเทิง (The Entertainer): ผู้ประกอบการที่รักสนุกและมีเสน่ห์ดึงดูด ชอบอยู่กับปัจจุบัน รักการเฉลิมฉลอง และสามารถทำให้ผู้คนรู้สึกดีได้ตลอดเวลา"
+SCALE_OPTIONS = {
+    "1 - ไม่ตรงเลย": 1,
+    "2 - ไม่ค่อยตรง": 2,
+    "3 - ปานกลาง / ไม่แน่ใจ": 3,
+    "4 - ค่อนข้างตรง": 4,
+    "5 - ตรงมากที่สุด": 5
 }
 
-# --- ฐานข้อมูลผลลัพธ์ ความถนัด (5 ประพจน์ + อนาคต) ---
-aptitude_descriptions = {
-    "Math": {
-        "title": "คณิตศาสตร์และเทคโนโลยี (Math & Tech)",
-        "desc": "คุณมีความคิดเชิงระบบและเชิงตรรกะสูง สามารถมองเห็นรูปแบบทางคณิตศาสตร์ ชอบการแก้ปัญหาด้วยขั้นตอนที่ชัดเจน และมีความสามารถในการเขียนโค้ดหรือจัดการกับข้อมูลเชิงลึก",
-        "careers": "วิศวกรซอฟต์แวร์, นักวิเคราะห์ข้อมูล (Data Scientist), นักคณิตศาสตร์, นักพัฒนา AI, นักวิทยาศาสตร์ข้อมูล"
-    },
-    "Science": {
-        "title": "วิทยาศาสตร์และสุขภาพ (Science & Health)",
-        "desc": "คุณเป็นคนตั้งคำถาม ชอบสังเกต และเชื่อมั่นในหลักฐานเชิงประจักษ์ ความอยากรู้ของคุณเน้นไปที่ธรรมชาติ สิ่งมีชีวิต กลไกทางกายภาพ และการทดลองเพื่อสร้างนวัตกรรม",
-        "careers": "แพทย์, นักวิจัยทางวิทยาศาสตร์, เภสัชกร, นักชีววิทยา, วิศวกรสิ่งแวดล้อม, นักฟิสิกส์"
-    },
-    "Language": {
-        "title": "ภาษาและวรรณกรรม (Language & Literature)",
-        "desc": "คุณมีพลังในการสื่อสารผ่านคำพูดและตัวอักษร มีความอ่อนไหวต่อภาษา ชอบอ่านและเขียน สามารถเล่าเรื่องได้อย่างสลดใจ และเข้าใจความแตกต่างทางวัฒนธรรมได้ดี",
-        "careers": "นักเขียน, นักแปล, นักหนังสือพิมพ์, ทนายความ, นักการทูต, ผู้ดูแลเว็บไซต์ด้านคอนเทนต์ (Content Creator), ครูสอนภาษา"
-    },
-    "Social": {
-        "title": "สังคมศึกษาและมนุษยศาสตร์ (Social Studies)",
-        "desc": "คุณมีความเข้าใจลึกซึ้งเกี่ยวกับพฤติกรรมมนุษย์ ระบบสังคม และประวัติศาสตร์ มี Empathy สูง ชอบพิจารณาปัญหาอย่างมีเหตุผล และอยากมีส่วนร่วมในการพัฒนาสังคม",
-        "careers": "นักจิตวิทยา, นักสังคมวิทยา, นักระบายความเห็น, นักกฎหมาย, ผู้บริหารธุรกิจ, นักการเมือง, งานด้าน NGO"
-    },
-    "Art": {
-        "title": "ศิลปะ ดนตรี และการออกแบบ (Art & Design)",
-        "desc": "คุณเป็นผู้สร้างสรรค์ที่มีจินตนาการล้นเหลือ ตอบสนองต่อสุนทรียภาพได้ดีทั้งทางสายตา การได้ยิน และการสัมผัส ต้องการอิสระในการทำงานและไม่ชอบกรอบข้อบังคับที่เข้มงวด",
-        "careers": "นักออกแบบกราฟิก, ศิลปิน, นักดนตรี, ผู้กำกับภาพยนตร์, สถาปนิก, นักออกแบบผลิตภัณฑ์ (UI/UX Designer), ช่างภาพ"
-    }
-}
-
-# --- ฟังก์ชันช่วยเหลือ ---
-def init_session():
-    if 'p1_answers' not in st.session_state:
-        st.session_state.p1_answers = [None] * 80
-    if 'p2_answers' not in st.session_state:
-        st.session_state.p2_answers = [None] * 35
-    if 'page' not in st.session_state:
-        st.session_state.page = 'intro'
-
-def reset_all():
-    st.session_state.p1_answers = [None] * 80
-    st.session_state.p2_answers = [None] * 35
-    st.session_state.page = 'intro'
-
-def render_trait_bar(left_label, right_label, left_score, right_score, color_left, color_right):
-    total = left_score + right_score
-    if total == 0: total = 1
-    left_pct = int((left_score / total) * 100)
-    right_pct = 100 - left_pct
+# ---------------------------------------------------------
+# STEP 1: ประเมิน MBTI (Cognitive Functions)
+# ---------------------------------------------------------
+if st.session_state.step == 1:
+    st.title("🧩 ขั้นตอนที่ 1: ประเมินบุคลิกภาพ (MBTI)")
+    st.write("เลือกสเกลที่ตรงกับตัวคุณมากที่สุดเพื่อสรุปหาประพจน์ทางบุคลิกภาพ")
     
-    st.markdown(f"""
-    <div class="trait-bar-container">
-        <div class="trait-label" style="text-align: left; color: {color_left if left_pct >= 50 else '#aaa'}">{left_label}</div>
-        <div class="trait-bar-bg">
-            <div style="width: {left_pct}%; height: 100%; background-color: {color_left}; float: left; border-radius: 5px 0 0 5px;"></div>
-            <div style="width: {right_pct}%; height: 100%; background-color: {color_right}; float: right; border-radius: 0 5px 5px 0;"></div>
-        </div>
-        <div class="trait-pct" style="color: {color_left if left_pct >= 50 else color_right}">{left_pct if left_pct >= 50 else right_pct}%</div>
-        <div class="trait-label" style="text-align: right; color: {color_right if right_pct > left_pct else '#aaa'}">{right_label}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- ตรรกะการคำนวณ ---
-def calculate_mbti(answers):
-    # แปลงคำตอบ (1-5) เป็นคะแนน
-    scores = {
-        'Ne': sum(answers[0:10]), 'Ni': sum(answers[10:20]),
-        'Se': sum(answers[20:30]), 'Si': sum(answers[30:40]),
-        'Te': sum(answers[40:50]), 'Ti': sum(answers[50:60]),
-        'Fe': sum(answers[60:70]), 'Fi': sum(answers[70:80])
-    }
-    
-    # คำนวณมิติ MBTI จาก Cognitive Functions
-    E = scores['Ne'] + scores['Se'] + scores['Te'] + scores['Fe']
-    I = scores['Ni'] + scores['Si'] + scores['Ti'] + scores['Fi']
-    S = scores['Se'] + scores['Si']
-    N = scores['Ne'] + scores['Ni']
-    T = scores['Te'] + scores['Ti']
-    F = scores['Fe'] + scores['Fi']
-    # J/P Logic: J = Je (Te+Fe) + Pi (Ni+Si) , P = Ji (Ti+Fi) + Pe (Ne+Se)
-    J = scores['Te'] + scores['Fe'] + scores['Ni'] + scores['Si']
-    P = scores['Ti'] + scores['Fi'] + scores['Ne'] + scores['Se']
-    
-    mbti = ""
-    mbti += "E" if E >= I else "I"
-    mbti += "S" if S >= N else "N"
-    mbti += "T" if T >= F else "F"
-    mbti += "J" if J >= P else "P"
-    
-    # เรียงลำดับ Function Stack
-    sorted_functions = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    stack = [f[0] for f in sorted_functions[:4]]
-    
-    return mbti, stack, {'E':E, 'I':I, 'S':S, 'N':N, 'T':T, 'F':F, 'J':J, 'P':P}
-
-def calculate_aptitude(answers):
-    scores = {
-        'Math': sum(answers[0:7]),
-        'Science': sum(answers[7:14]),
-        'Language': sum(answers[14:21]),
-        'Social': sum(answers[21:28]),
-        'Art': sum(answers[28:35])
-    }
-    # เรียงจากมากไปน้อย
-    sorted_apt = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    return sorted_apt
-
-# --- UI Flow ---
-init_session()
-
-if st.session_state.page == 'intro':
-    st.markdown("<h1 style='text-align: center; font-weight: 700;'>🧠 แบบทดสอบ MBTI & ความถนัดรายวิชา</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666; font-size: 18px;'>ค้นพบฟังก์ชันทางสมอง (Cognitive Functions), บุคลิกภาพ และเส้นทางอนาคตที่แท้จริงของคุณ</p>", unsafe_allow_html=True)
-    
-    st.markdown("<div class='card'><h3>📋 รายละเอียดการทดสอบ</h3><ul><li><b>ส่วนที่ 1:</b> การทดสอบ Cognitive Functions 8 ด้าน (Ne, Ni, Se, Si, Te, Ti, Fe, Fi) จำนวน 80 ข้อ เพื่อวิเคราะห์หา Function Stack และ MBTI ที่แม่นยำที่สุด</li><li><b>ส่วนที่ 2:</b> การทดสอบความสนใจและความถนัดรายวิชา 5 หมวด จำนวน 35 ข้อ เพื่อวิเคราะห์ทิศทางการเรียนและอาชีพในอนาคต</li></ul><p style='color:red;'>* กรุณาตอบตามความเป็นจริงของตัวเอง ไม่มีคำตอบถูกหรือผิด</p></div>", unsafe_allow_html=True)
-    
-    if st.button("เริ่มทำแบบทดสอบ", use_container_width=True, type="primary"):
-        st.session_state.page = 'p1'
-        st.rerun()
-
-elif st.session_state.page == 'p1':
-    idx = 0
-    for i, ans in enumerate(st.session_state.p1_answers):
-        if ans is None:
-            idx = i
-            break
-        else:
-            idx = i + 1 if i + 1 < 80 else 80
+    with st.form("mbti_form"):
+        raw_answers = {}
+        for idx, q in enumerate(COGNITIVE_QUESTIONS, 1):
+            q_id = q.get('id', idx)
+            st.markdown(f"**ข้อที่ {idx}:** {q['text']}")
+            ans = st.radio(
+                f"ระดับความตรง (ข้อ {idx}):", 
+                options=list(SCALE_OPTIONS.keys()), 
+                index=2, 
+                key=f"cog_{q_id}",
+                horizontal=True
+            )
+            raw_answers[q_id] = {"func": q["func"], "score": SCALE_OPTIONS[ans]}
+            st.markdown("<hr style='margin: 0.5rem 0 1.5rem 0;'>", unsafe_allow_html=True)
             
-    if idx < 80:
-        progress = (idx / 80)
-        st.progress(progress, text=f"ส่วนที่ 1: Cognitive Functions (ข้อ {idx+1}/80)")
+        submitted = st.form_submit_button("🚀 ประมวลผล MBTI (ไปขั้นตอนที่ 2)")
         
-        st.markdown(f"<div class='card'><h2 style='margin-top:0;'>{questions_p1[idx]}</h2></div>", unsafe_allow_html=True)
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        options = ["เห็นด้วยน้อยมาก", "เห็นด้วยน้อย", "เห็นด้วยปานกลาง", "เห็นด้วยมาก", "เห็นด้วยมากที่สุด"]
-        vals = [1, 2, 3, 4, 5]
-        
-        with col1:
-            if st.button(options[0], use_container_width=True, key=f"p1_{idx}_1"):
-                st.session_state.p1_answers[idx] = vals[0]
-                st.rerun()
-        with col2:
-            if st.button(options[1], use_container_width=True, key=f"p1_{idx}_2"):
-                st.session_state.p1_answers[idx] = vals[1]
-                st.rerun()
-        with col3:
-            if st.button(options[2], use_container_width=True, key=f"p1_{idx}_3"):
-                st.session_state.p1_answers[idx] = vals[2]
-                st.rerun()
-        with col4:
-            if st.button(options[3], use_container_width=True, key=f"p1_{idx}_4"):
-                st.session_state.p1_answers[idx] = vals[3]
-                st.rerun()
-        with col5:
-            if st.button(options[4], use_container_width=True, key=f"p1_{idx}_5"):
-                st.session_state.p1_answers[idx] = vals[4]
-                st.rerun()
-                
-        # ปุ่มย้อนกลับ
-        if idx > 0 and st.button("⬅️ ข้อก่อนหน้า"):
-            st.session_state.p1_answers[idx-1] = None
-            st.rerun()
-    else:
-        st.session_state.page = 'p2'
-        st.rerun()
+        if submitted:
+            func_scores = {"Ne": 0, "Ni": 0, "Se": 0, "Si": 0, "Te": 0, "Ti": 0, "Fe": 0, "Fi": 0}
+            for item in raw_answers.values():
+                func_scores[item["func"]] += item["score"]
 
-elif st.session_state.page == 'p2':
-    idx = 0
-    for i, ans in enumerate(st.session_state.p2_answers):
-        if ans is None:
-            idx = i
-            break
-        else:
-            idx = i + 1 if i + 1 < 35 else 35
+            func_percentages = {func: round((score / 50) * 100, 1) for func, score in func_scores.items()}
+            sorted_funcs = sorted(func_scores.items(), key=lambda x: x[1], reverse=True)
+
+            dom_func = max(func_scores, key=func_scores.get)
             
-    if idx < 35:
-        progress = (idx / 35)
-        st.progress(progress, text=f"ส่วนที่ 2: ความถนัดรายวิชา (ข้อ {idx+1}/35)")
-        
-        st.markdown(f"<div class='card'><h2 style='margin-top:0;'>{questions_p2[idx]}</h2></div>", unsafe_allow_html=True)
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        options = ["เห็นด้วยน้อยมาก", "เห็นด้วยน้อย", "เห็นด้วยปานกลาง", "เห็นด้วยมาก", "เห็นด้วยมากที่สุด"]
-        vals = [1, 2, 3, 4, 5]
-        
-        with col1:
-            if st.button(options[0], use_container_width=True, key=f"p2_{idx}_1"):
-                st.session_state.p2_answers[idx] = vals[0]
-                st.rerun()
-        with col2:
-            if st.button(options[1], use_container_width=True, key=f"p2_{idx}_2"):
-                st.session_state.p2_answers[idx] = vals[1]
-                st.rerun()
-        with col3:
-            if st.button(options[2], use_container_width=True, key=f"p2_{idx}_3"):
-                st.session_state.p2_answers[idx] = vals[2]
-                st.rerun()
-        with col4:
-            if st.button(options[3], use_container_width=True, key=f"p2_{idx}_4"):
-                st.session_state.p2_answers[idx] = vals[3]
-                st.rerun()
-        with col5:
-            if st.button(options[4], use_container_width=True, key=f"p2_{idx}_5"):
-                st.session_state.p2_answers[idx] = vals[4]
-                st.rerun()
-                
-        if idx > 0 and st.button("⬅️ ข้อก่อนหน้า"):
-            st.session_state.p2_answers[idx-1] = None
+            aux_candidates_map = {
+                "Ne": ["Ti", "Fi"], "Se": ["Ti", "Fi"],
+                "Ni": ["Te", "Fe"], "Si": ["Te", "Fe"],
+                "Te": ["Ni", "Si"], "Fe": ["Ni", "Si"],
+                "Ti": ["Ne", "Se"], "Fi": ["Ne", "Se"]
+            }
+            possible_aux = aux_candidates_map.get(dom_func, ["Te", "Fe"])
+            aux_func = max(possible_aux, key=lambda f: func_scores[f])
+
+            opposite_map = {
+                "Ne": "Si", "Si": "Ne",
+                "Ni": "Se", "Se": "Ni",
+                "Te": "Fi", "Fi": "Te",
+                "Ti": "Fe", "Fe": "Ti"
+            }
+            tertiary_func = opposite_map[aux_func]
+            inferior_func = opposite_map[dom_func]
+
+            st.session_state.func_scores = func_scores
+            st.session_state.func_percentages = func_percentages
+            st.session_state.sorted_funcs = sorted_funcs
+            st.session_state.possible_aux = possible_aux
+            st.session_state.mbti_stack = {
+                "Dom": dom_func,
+                "Aux": aux_func,
+                "Tert": tertiary_func,
+                "Inf": inferior_func
+            }
+
+            type_mapping = {
+                ("Ne", "Ti"): "ENTP", ("Ne", "Fi"): "ENFP",
+                ("Ni", "Te"): "INTJ", ("Ni", "Fe"): "INFJ",
+                ("Se", "Ti"): "ESTP", ("Se", "Fi"): "ESFP",
+                ("Si", "Te"): "ISTJ", ("Si", "Fe"): "ISFJ",
+                ("Te", "Ni"): "ENTJ", ("Te", "Si"): "ESTJ",
+                ("Ti", "Ne"): "INTP", ("Ti", "Se"): "ISTP",
+                ("Fe", "Ni"): "ENFJ", ("Fe", "Si"): "ESFJ",
+                ("Fi", "Ne"): "INFP", ("Fi", "Se"): "ISFP"
+            }
+            
+            st.session_state.mbti_result = type_mapping.get((dom_func, aux_func), "INTJ")
+            st.session_state.step = 2
             st.rerun()
-    else:
-        st.session_state.page = 'result'
+
+# ---------------------------------------------------------
+# STEP 2: สรุปผล MBTI และแสดงสมการตรรกศาสตร์
+# ---------------------------------------------------------
+elif st.session_state.step == 2:
+    st.title("🌟 ขั้นตอนที่ 2: สรุปผลลัพธ์และแบบจำลองตรรกศาสตร์ MBTI")
+    
+    mbti = st.session_state.mbti_result
+    info = MBTI_DESCRIPTIONS.get(mbti, MBTI_DESCRIPTIONS["INTJ"])
+    sorted_funcs = st.session_state.get("sorted_funcs", [])
+    func_pct = st.session_state.get("func_percentages", {})
+    stack = st.session_state.get("mbti_stack", {})
+    possible_aux = st.session_state.get("possible_aux", [])
+    
+    st.success(f"### ผลการวิเคราะห์ MBTI: **{mbti}** ({info['title']})")
+    st.info(f"**ลักษณะตัวตน:** {info['desc']}")
+
+    st.subheader("📊 ลำดับคะแนนและ Cognitive Stack")
+    col_chart, col_rank = st.columns([3, 2])
+    
+    with col_chart:
+        st.markdown("**ระดับความเข้มข้นของฟังก์ชัน (%):**")
+        for func_code, score in sorted_funcs:
+            pct = func_pct.get(func_code, 0)
+            st.write(f"**{func_code}**: {score}/50 คะแนน ({pct}%)")
+            st.progress(pct / 100)
+            
+    with col_rank:
+        st.markdown("**ฟังก์ชันการทำงานหลัก:**")
+        if stack:
+            st.write(f"🥇 **Dominant:** `{stack['Dom']}` ({func_pct.get(stack['Dom'], 0)}%)")
+            st.write(f"🥈 **Auxiliary:** `{stack['Aux']}` ({func_pct.get(stack['Aux'], 0)}%)")
+            st.write(f"🥉 **Tertiary:** `{stack['Tert']}` ({func_pct.get(stack['Tert'], 0)}%)")
+            st.write(f"⚓ **Inferior:** `{stack['Inf']}` ({func_pct.get(stack['Inf'], 0)}%)")
+            
+    # ---------------------------------------------------------
+    # แสดงตรรกศาสตร์สไตล์ ม.4 (Propositions & Truth Logic)
+    # ---------------------------------------------------------
+    st.markdown("---")
+    with st.expander("📚 คลิกเพื่อดูตรรกศาสตร์การคำนวณ (ระดับ ม.4: เรื่องประพจน์และเงื่อนไข)"):
+        st.markdown("### 1. การกำหนดประพจน์ (Propositions)")
+        st.write("* ให้ **Score(f)** แทน คะแนนของฟังก์ชัน f")
+        st.write("* ให้ประพจน์ **P**: *ฟังก์ชัน A มีคะแนนสูงที่สุด*")
+        
+        st.markdown("---")
+
+        st.markdown("### 2. เงื่อนไขทางตรรกศาสตร์ในการหา Dominant (ฟังก์ชันหลัก)")
+        st.latex(r"\text{Dom} = A \iff \forall f \, (\text{Score}(A) \ge \text{Score}(f))")
+        st.caption("แปลว่า: ฟังก์ชัน A จะเป็น Dominant ก็ต่อเมื่อ คะแนนของ A มากกว่าหรือเท่ากับคะแนนของทุกๆ ฟังก์ชัน (f)")
+
+        st.markdown("---")
+
+        st.markdown("### 3. ตรรกศาสตร์การเลือก Auxiliary (ฟังก์ชันรอง)")
+        st.markdown("**กรณีที่ Dom = Ne:**")
+        st.latex(r"(\text{Dom} = Ne) \implies (\text{Aux} \in \{Ti, Fi\})")
+        st.write("* **เงื่อนไขที่ 1:** ถ้า `Score(Ti) > Score(Fi)` แล้ว `(Aux = Ti ∧ Type = ENTP)`")
+        st.write("* **เงื่อนไขที่ 2:** ถ้า `Score(Fi) > Score(Ti)` แล้ว `(Aux = Fi ∧ Type = ENFP)`")
+
+        st.markdown("---")
+
+        st.markdown("### 4. กฎคู่สมดุลตรงข้าม (สมมูลทางตรรกศาสตร์ ⇔)")
+        st.latex(r"\text{Dom} = Ne \iff \text{Inferior} = Si")
+        st.latex(r"\text{Aux} = Ti \iff \text{Tertiary} = Fe")
+        st.latex(r"\text{Aux} = Fi \iff \text{Tertiary} = Te")
+        
+    st.markdown("---")
+    if st.button("➡️ ไปต่อ: ประเมินความชอบ 5 หมวดหมู่ (Step 3)"):
+        st.session_state.step = 3
         st.rerun()
 
-elif st.session_state.page == 'result':
-    # --- คำนวณผลลัพธ์ ---
-    mbti_type, func_stack, dim_scores = calculate_mbti(st.session_state.p1_answers)
-    apt_rank = calculate_aptitude(st.session_state.p2_answers)
+# ---------------------------------------------------------
+# STEP 3: ประเมินความชอบ 5 หมวดหมู่ (วิชา, งานอดิเรก, เป้าหมาย, การเงิน)
+# ---------------------------------------------------------
+elif st.session_state.step == 3:
+    st.title("📚 ขั้นตอนที่ 3: ประเมินความชอบและศักยภาพ 5 หมวดหมู่")
+    st.write("กรุณาทำแบบประเมินให้ครบทั้ง 5 หมวด เพื่อนำไปสรุปเป็นประพจน์ทางตรรกศาสตร์")
     
-    # --- แสดงผลลัพธ์ ---
-    st.markdown(f"<h1 style='text-align: center;'>ผลลัพธ์ของคุณคือ <span style='color:#4f46e5;'>{mbti_type}</span></h1>", unsafe_allow_html=True)
+    all_question_sets = [
+        ("📖 1. วิชาความรู้ (Subject Knowledge)", SUBJECT_QUESTIONS, "sub"),
+        ("🎨 2. งานอดิเรกและความสนใจ (Hobbies & Interests)", HOBBY_QUESTIONS, "hobby"),
+        ("🎯 3. เป้าหมายอาชีพและค่านิยม (Career Goals)", GOAL_QUESTIONS, "goal"),
+        ("💰 4. การบริหารและการเงิน (Financial & Management)", FINANCIAL_QUESTIONS, "fin")
+    ]
     
-    # แสดงประพจน์ MBTI
-    st.markdown(f"<div class='card' style='background: linear-gradient(135deg, #eef2ff 0%, #ffffff 100%);'><h2 style='margin-top:0;'>{mbti_descriptions[mbti_type]}</h2></div>", unsafe_allow_html=True)
-    
-    # กราฟ MBTI Dimensions แบบ 16Personalities
-    st.markdown("<div class='card'><h3>สัดส่วนบุคลิกภาพ</h3>", unsafe_allow_html=True)
-    render_trait_bar('E', 'I', dim_scores['E'], dim_scores['I'], '#4f46e5', '#6366f1')
-    render_trait_bar('S', 'N', dim_scores['S'], dim_scores['N'], '#10b981', '#34d399')
-    render_trait_bar('T', 'F', dim_scores['T'], dim_scores['F'], '#f59e0b', '#fbbf24')
-    render_trait_bar('J', 'P', dim_scores['J'], dim_scores['P'], '#ef4444', '#f87171')
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # แสดง Cognitive Function Stack
-    st.markdown("<div class='card'><h3>ลำดับ Cognitive Functions (Function Stack)</h3><p style='color:#666;'>ฟังก์ชันทางสมองที่คุณใช้งานมากที่สุดไปน้อยที่สุด</p>", unsafe_allow_html=True)
-    stack_labels = ["Dominant (หลัก)", "Auxiliary (ช่วย)", "Tertiary (ตติยะ)", "Inferior (ด้อย)"]
-    cols = st.columns(4)
-    for i, (col, func) in enumerate(zip(cols, func_stack)):
-        with col:
-            st.markdown(f"<div style='text-align:center; padding:10px; background:#f8fafc; border-radius:10px;'><b style='color:#4f46e5; font-size:24px;'>{func}</b><br><span style='font-size:12px; color:#666;'>{stack_labels[i]}</span></div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # --- ส่วนที่ 2: ความถนัดรายวิชา ---
-    st.markdown("<hr style='margin: 2rem 0;'>", unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align: center;'>🎯 การวิเคราะห์ความถนัดรายวิชาและเส้นทางอนาคต</h1>", unsafe_allow_html=True)
-    
-    # แสดง Top 1 อย่างละเอียด
-    top_apt_key = apt_rank[0][0]
-    top_apt_data = aptitude_descriptions[top_apt_key]
-    st.markdown(f"<div class='card' style='border-left: 5px solid #4f46e5;'><h3 style='margin-top:0;'>🏆 ความถนัดหลัก: {top_apt_data['title']}</h3><p>{top_apt_data['desc']}</p><br><b>🚀 สไตล์เป้าหมายการทำงานในอนาคตที่เหมาะสม:</b><p style='color:#4f46e5;'>{top_apt_data['careers']}</p></div>", unsafe_allow_html=True)
-    
-    # แสดงอันดับที่เหลือเป็นประพจน์สั้นๆ
-    st.markdown("<div class='card'><h3>อันดับความถนัดทั้งหมด</h3>", unsafe_allow_html=True)
-    max_score = apt_rank[0][1] if apt_rank[0][1] > 0 else 1
-    for i, (key, score) in enumerate(apt_rank):
-        data = aptitude_descriptions[key]
-        pct = int((score / max_score) * 100)
-        st.markdown(f"<b>{i+1}. {data['title']}</b>", unsafe_allow_html=True)
-        st.progress(pct / 100, text=f"{pct}%")
-        st.markdown(f"<p style='font-size:14px; color:#555; margin-top:-10px; margin-bottom:15px;'>{data['desc']}</p>", unsafe_allow_html=True)
+    with st.form("all_categories_form"):
+        category_scores = {}
         
-    st.markdown("</div>", unsafe_allow_html=True)
+        for tab_name, questions_list, prefix in all_question_sets:
+            st.subheader(tab_name)
+            for idx, q in enumerate(questions_list, 1):
+                if isinstance(q, dict):
+                    # 1. ดึงข้อความคำถาม (รองรับคีย์ label, text, และ question)
+                    q_text = q.get('label') or q.get('text') or q.get('question') or str(q)
+                    category = q.get('category', 'ทั่วไป')
+                    q_id = q.get('id', f"{prefix}_{idx}")
+                    options = q.get('options') # ดึงตัวเลือกเฉพาะคำถาม (ถ้ามี)
+                else:
+                    q_text = str(q)
+                    category = 'ทั่วไป'
+                    q_id = f"{prefix}_{idx}"
+                    options = None
+                
+                st.markdown(f"**ข้อที่ {idx}:** {q_text} *(หมวด: {category})*")
+                
+                # 2. แสดงตัวเลือก: ถ้ามี options เฉพาะข้อให้แสดงแบบ Choice ถ้าไม่มีให้ใช้สเกล 1-5
+                if options and isinstance(options, list):
+                    ans = st.radio(
+                        f"เลือกคำตอบที่ตรงกับคุณมากที่สุด ({q_id}):", 
+                        options=options, 
+                        index=0, 
+                        key=f"{prefix}_{q_id}",
+                        horizontal=False
+                    )
+                    # คำนวณคะแนนตามลำดับตัวเลือกที่เลือก
+                    score_val = (options.index(ans) + 1) * (5 / len(options))
+                    category_scores[category] = category_scores.get(category, 0) + score_val
+                else:
+                    ans = st.radio(
+                        f"ระดับความตรง ({q_id}):", 
+                        options=list(SCALE_OPTIONS.keys()), 
+                        index=2, 
+                        key=f"{prefix}_{q_id}", 
+                        horizontal=True
+                    )
+                    category_scores[category] = category_scores.get(category, 0) + SCALE_OPTIONS[ans]
+                    
+                st.markdown("<hr style='margin: 0.2rem 0 0.8rem 0;'>", unsafe_allow_html=True)
+            st.markdown("---")
+
+        submitted_step3 = st.form_submit_button("🚀 สรุปประพจน์และประมวลผลหาคณะ/อาชีพ (Step 4)")
+        
+        if submitted_step3:
+            st.session_state.category_scores = category_scores
+            st.session_state.step = 4
+            st.rerun()
+# ---------------------------------------------------------
+# STEP 4: เชื่อมประพจน์ (AND/OR Logic) & ตรวจสอบเงื่อนไขคณะ/อาชีพ
+# ---------------------------------------------------------
+elif st.session_state.step == 4:
+    st.title("🎓 ขั้นตอนที่ 4: ประมวลผลตรรกศาสตร์เชื่อมประพจน์และสรุปคณะ/อาชีพ")
     
-    # ปุ่มเริ่มใหม่
-    st.markdown("<div style='text-align: center; margin-top: 2rem;'>", unsafe_allow_html=True)
-    if st.button("🔄 ทำแบบทดสอบอีกครั้ง", use_container_width=True):
-        reset_all()
+    mbti = st.session_state.mbti_result
+    cat_scores = st.session_state.get("category_scores", {})
+
+    # ฟังก์ชันช่วยเช็กคะแนนในแต่ละหมวดว่าสูงกว่าเกณฑ์ปานกลางไหม
+    # category_scores เป็นคะแนนรวมของคำถามในหมวดนั้น
+    def is_category_high(keywords):
+        for cat, score in cat_scores.items():
+            if any(kw.lower() in cat.lower() for kw in keywords):
+                if score >= 6: # มีความสนใจในระดับปานกลางขึ้นไป
+                    return True
+        return False
+
+    # กำหนดประพจน์หลักตามหมวดหมู่
+    is_math_sci = is_category_high(["math", "คณิต", "science", "วิทย์", "ฟิสิกส์", "เคมี", "ชีว"])
+    is_tech = is_category_high(["tech", "คอมพิวเตอร์", "เทคโนโลยี", "it", "coding", "นวัตกรรม"])
+    is_art_design = is_category_high(["art", "ศิลปะ", "ออกแบบ", "design", "สร้างสรรค์", "บันเทิง"])
+    is_biz_finance = is_category_high(["finance", "การเงิน", "ธุรกิจ", "การบริหาร", "การลงทุน", "การตลาด", "การค้า"])
+    is_social_people = is_category_high(["social", "สังคม", "ภาษา", "จิตวิทยา", "การบริการ", "การสื่อสาร", "บริหารคน"])
+    
+    # ประพจน์ย่อยสำหรับจำแนกสายอาชีพเฉพาะทาง
+    is_healthcare = is_category_high([
+        "สุขภาพ", "health", "แพทย", "พยาบาล", "เภสัช", "สาธารณสุข",
+        "กายภาพ", "วิทยาศาสตร์การแพทย์", "โภชนาการ"
+    ])
+    is_language = is_category_high([
+        "ภาษา", "language", "อังกฤษ", "ไทย", "จีน", "ญี่ปุ่น",
+        "แปล", "ล่าม", "วรรณกรรม", "มนุษยศาสตร์"
+    ])
+    is_education = is_category_high([
+        "การศึกษา", "an�รู", "สอน", "education", "พัฒนาคน", "ฝึกอบรม"
+    ])
+    is_helping = is_category_high([
+        "ช่วยเหลือ", "จิตอาสา", "สังคมสงเคราะห์", "ชุมชน", "ผู้คน",
+        "สุขภาพจิต", "ให้คำปรึกษา", "counseling", "พัฒนาสังคม"
+    ])
+    is_nature = is_category_high([
+        "ธรรมชาติ", "สิ่งแวดล้อม", "เกษตร", "ป่าไม้", "สัตว์",
+        "ทะเล", "ภูมิศาสตร์", "ทรัพยากร", "environment", "เกษตรกรรม"
+    ])
+    is_research = is_category_high([
+        "วิจัย", "research", "ทดลอง", "ห้องปฏิบัติการ", "วิชาการ",
+        "วิเคราะห์ข้อมูล", "สถิติ", "ค้นคว้า"
+    ])
+    is_operations = is_category_high([
+        "การจัดการ", "ปฏิบัติการ", "โลจิสติกส์", "ขนส่ง", "ซัพพลายเชน",
+        "วางแผน", "ระบบงาน", "ควบคุมคุณภาพ", "operations"
+    ])
+    is_security = is_category_high([
+        "ความปลอดภัย", "ทหาร", "ตำรวจ", "กู้ภัย", "ฉุกเฉิน",
+        "นิติวิทยาศาสตร์", "security", "ป้องกันประเทศ"
+    ])
+    is_sport = is_category_high([
+        "กีฬา", "ออกกำลังกาย", "ฟิตเนส", "sport", "การเคลื่อนไหว",
+        "สุขภาพกาย", "โค้ชกีฬา"
+    ])
+    is_food = is_category_high([
+        "อาหาร", "ทำอาหาร", "เชฟ", "เบเกอรี่", "เครื่องดื่ม",
+        "โภชนาการ", "food", "คหกรรม"
+    ])
+    is_travel = is_category_high([
+        "ท่องเที่ยว", "โรงแรม", "การบิน", "การโรงแรม", "ทัวร์",
+        "บริการ", "hospitality", "tourism"
+    ])
+    is_practical = is_category_high([
+        "ช่าง", "งานฝีมือ", "เครื่องจักร", "ก่อสร้าง", "ลงมือทำ",
+        "ประดิษฐ์", "ซ่อมแซม", "อุตสาหกรรม", "ช่างยนต์"
+    ])
+    is_legal = is_category_high([
+        "กฎหมาย", "การเมือง", "รัฐศาสตร์", "นโยบาย", "การปกครอง",
+        "สิทธิมนุษยชน", "law", "การทูต"
+    ])
+
+    st.markdown("### 1. สรุปประพจน์ความสนใจและศักยภาพ (Propositions Setup)")
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        st.write(f"- **ประพจน์ $M_{{{mbti}}}$**: บุคลิกภาพแบบ {mbti} = `True`")
+        st.write(f"- **ประพจน์ $P$ (สนใจสายวิทยาศาสตร์/คณิตศาสตร์)** = `{is_math_sci}`")
+        st.write(f"- **ประพจน์ $Q$ (สนใจเทคโนโลยี/ไอที/นวัตกรรม)** = `{is_tech}`")
+    with col_p2:
+        st.write(f"- **ประพจน์ $R$ (สนใจศิลปะ/การออกแบบ/งานสร้างสรรค์)** = `{is_art_design}`")
+        st.write(f"- **ประพจน์ $S$ (สนใจบริหาร/การเงิน/ธุรกิจ)** = `{is_biz_finance}`")
+        st.write(f"- **ประพจน์ $T$ (สนใจมนุษยศาสตร์/สังคม/จิตวิทยา/ภาษา)** = `{is_social_people}`")
+    
+    with st.expander("ดูประพจน์ย่อยสำหรับสายอาชีพเฉพาะทาง"):
+        secondary_props = {
+            "H": ("สุขภาพและการแพทย์", is_healthcare),
+            "L": ("ภาษาและมนุษยศาสตร์", is_language),
+            "E": ("การศึกษาและการพัฒนาคน", is_education),
+            "C": ("การช่วยเหลือคนและชุมชน", is_helping),
+            "N": ("ธรรมชาติและสิ่งแวดล้อม", is_nature),
+            "X": ("การวิจัยและวิชาการ", is_research),
+            "O": ("ปฏิบัติการและการจัดการระบบ", is_operations),
+            "K": ("ความปลอดภัยและงานฉุกเฉิน", is_security),
+            "A": ("กีฬาและการเคลื่อนไหว", is_sport),
+            "F": ("อาหารและโภชนาการ", is_food),
+            "V": ("การเดินทางและการบริการ", is_travel),
+            "W": ("งานช่างและงานปฏิบัติ", is_practical),
+            "J": ("กฎหมายและนโยบาย", is_legal),
+        }
+        prop_cols = st.columns(3)
+        for idx, (code, (label, value)) in enumerate(secondary_props.items()):
+            with prop_cols[idx % 3]:
+                st.write(f"**{code}** — {label}: `{value}`")
+
+    st.markdown("---")
+    st.markdown("### 2. ตรวจสอบเงื่อนไขทางตรรกศาสตร์ของแต่ละสายคณะและอาชีพ")
+    
+    # นิยามเงื่อนไขตรรกศาสตร์ครอบคลุมสายคณะและอาชีพหลัก
+    faculties_rules = [
+        {
+            "faculty": "🏛️ คณะวิศวกรรมศาสตร์ / เทคโนโลยีสารสนเทศ (Engineers & Developers)",
+            "condition_symbol": r"(M_{INTJ} \lor M_{INTP} \lor M_{ENTP} \lor M_{ISTP}) \land Q \land (P \lor S)",
+            "eval": (mbti in ["INTJ", "INTP", "ENTP", "ISTP"]) and is_tech and (is_math_sci or is_biz_finance),
+            "rule_desc": "ต้องเป็น (INTJ, INTP, ENTP, ISTP) AND สนใจเทคโนโลยี (Q) AND (สนใจวิทย์/คณิต หรือ การเงิน)",
+            "careers": "วิศวกรซอฟต์แวร์, นักพัฒนาระบบ, Data Scientist, วิศวกรเครือข่าย"
+        },
+        {
+            "faculty": "🏛️ คณะแพทยศาสตร์ / เภสัชศาสตร์ / จิตวิทยาคลินิก (Healthcare & Medical Sciences)",
+            "condition_symbol": r"(M_{INFJ} \lor M_{INTJ} \lor M_{ISFJ} \lor M_{ENFJ}) \land P \land T",
+            "eval": (mbti in ["INFJ", "INTJ", "ISFJ", "ENFJ"]) and is_math_sci and is_social_people,
+            "rule_desc": "ต้องเป็น (INFJ, INTJ, ISFJ, ENFJ) AND สนใจวิทย์ (P) AND สนใจสังคม/ช่วยเหลือคน (T)",
+            "careers": "แพทย์, เภสัชกร, นักจิตวิทยาคลินิก, นักวิจัยทางแพทย์"
+        },
+        {
+            "faculty": "🏛️ คณะบริหารธุรกิจ / เศรษฐศาสตร์ / การบัญชีและการเงิน (Business & Finance)",
+            "condition_symbol": r"(M_{ENTJ} \lor M_{ESTJ} \lor M_{ESTP} \lor M_{ENTP}) \land S",
+            "eval": (mbti in ["ENTJ", "ESTJ", "ESTP", "ENTP"]) and is_biz_finance,
+            "rule_desc": "ต้องเป็น (ENTJ, ESTJ, ESTP, ENTP) AND สนใจธุรกิจและการเงิน (S)",
+            "careers": "นักลงทุน, ผู้ประกอบการ, นักวิเคราะห์การเงิน, ผู้จัดการฝ่ายกลยุทธ์"
+        },
+        {
+            "faculty": "🏛️ คณะศิลปกรรมศาสตร์ / UX-UI Design / สื่อดิจิทัล (Arts & Creative Design)",
+            "condition_symbol": r"(M_{INFP} \lor M_{ISFP} \lor M_{ENFP} \lor M_{ENTP}) \land R",
+            "eval": (mbti in ["INFP", "ISFP", "ENFP", "ENTP"]) and is_art_design,
+            "rule_desc": "ต้องเป็น (INFP, ISFP, ENFP, ENTP) AND สนใจงานศิลป์/สร้างสรรค์ (R)",
+            "careers": "UX/UI Designer, กราฟิกดีไซเนอร์, ครีเอทีฟ, แอนิเมเตอร์"
+        },
+        {
+            "faculty": "🏛️ คณะนิเทศศาสตร์ / อักษรศาสตร์ / การตลาดและสื่อสาร (Communications & Media)",
+            "condition_symbol": r"(M_{ENFP} \lor M_{ESFP} \lor M_{ENFJ} \lor M_{ENTP}) \land (R \lor S \lor T)",
+            "eval": (mbti in ["ENFP", "ESFP", "ENFJ", "ENTP"]) and (is_art_design or is_biz_finance or is_social_people),
+            "rule_desc": "ต้องเป็น (ENFP, ESFP, ENFJ, ENTP) AND (สนใจศิลป์ หรือ ธุรกิจ หรือ สื่อสารสังคม)",
+            "careers": "นักการตลาดดิจิทัล, PR Manager, นักเขียน/นักคอนเทนต์, ผู้จัดรายการ"
+        },
+        {
+            "faculty": "🏛️ คณะนิติศาสตร์ / รัฐศาสตร์ / สังคมสงเคราะห์ (Law & Public Administration)",
+            "condition_symbol": r"(M_{ISTJ} \lor M_{ESTJ} \lor M_{INTJ} \lor M_{ENFJ}) \land T",
+            "eval": (mbti in ["ISTJ", "ESTJ", "INTJ", "ENFJ"]) and is_social_people,
+            "rule_desc": "ต้องเป็น (ISTJ, ESTJ, INTJ, ENFJ) AND สนใจสังคม/กฎหมาย/การเมือง (T)",
+            "careers": "ทนายความ, ผู้พิพากษา, นักการเมือง, นักการทูต, ข้าราชการบริหาร"
+        },
+        {
+            "faculty": "🏛️ คณะวิทยาการข้อมูล / ปัญญาประดิษฐ์ / สถิติ (Data & AI)",
+            "condition_symbol": r"(M_{INTJ} \lor M_{INTP} \lor M_{ENTJ} \lor M_{ENTP}) \land Q \land (P \lor S \lor X)",
+            "eval": (mbti in ["INTJ", "INTP", "ENTJ", "ENTP"]) and is_tech and (is_math_sci or is_biz_finance or is_research),
+            "rule_desc": "ต้องเป็น (INTJ, INTP, ENTJ, ENTP) AND สนใจเทคโนโลยี AND (วิทย์/คณิต หรือ ธุรกิจ หรือ วิจัย)",
+            "careers": "นักวิทยาศาสตร์ข้อมูล, นักวิจัย AI, Machine Learning Engineer, นักสถิติ"
+        },
+        {
+            "faculty": "🏛️ คณะวิทยาศาสตร์ / วิจัยและห้องปฏิบัติการ (Pure Science & Research)",
+            "condition_symbol": r"(M_{INTP} \lor M_{INTJ} \lor M_{ISTJ} \lor M_{INFJ}) \land P \land (X \lor N)",
+            "eval": (mbti in ["INTP", "INTJ", "ISTJ", "INFJ"]) and is_math_sci and (is_research or is_nature),
+            "rule_desc": "ต้องเป็น (INTP, INTJ, ISTJ, INFJ) AND สนใจวิทย์/คณิต AND (วิจัย หรือ ธรรมชาติ/สิ่งแวดล้อม)",
+            "careers": "นักวิทยาศาสตร์, นักวิจัย, นักดาราศาสตร์, นักวิเคราะห์ห้องปฏิบัติการ"
+        },
+        {
+            "faculty": "🏛️ คณะสหเวชศาสตร์ / พยาบาลศาสตร์ / สาธารณสุข (Allied Health)",
+            "condition_symbol": r"(M_{ISFJ} \lor M_{ESFJ} \lor M_{ISTJ} \lor M_{ENFJ}) \land H \land (P \lor T \lor C)",
+            "eval": (mbti in ["ISFJ", "ESFJ", "ISTJ", "ENFJ"]) and is_healthcare and (is_math_sci or is_social_people or is_helping),
+            "rule_desc": "ต้องเป็น (ISFJ, ESFJ, ISTJ, ENFJ) AND สนใจสุขภาพ AND (วิทย์/คณิต หรือ ผู้คน/การช่วยเหลือ)",
+            "careers": "พยาบาล, นักกายภาพบำบัด, นักเทคนิคการแพทย์, นักสาธารณสุข"
+        },
+        {
+            "faculty": "🏛️ คณะโภชนาการ / วิทยาศาสตร์การอาหาร (Nutrition & Food Science)",
+            "condition_symbol": r"(M_{ISFJ} \lor M_{ISTJ} \lor M_{ISFP} \lor M_{ESFJ}) \land (H \lor F) \land P",
+            "eval": (mbti in ["ISFJ", "ISTJ", "ISFP", "ESFJ"]) and (is_healthcare or is_food) and is_math_sci,
+            "rule_desc": "ต้องเป็น (ISFJ, ISTJ, ISFP, ESFJ) AND สนใจสุขภาพ/อาหาร AND สนใจวิทย์/คณิต",
+            "careers": "นักกำหนดอาหาร, นักวิทยาศาสตร์การอาหาร, นักพัฒนาผลิตภัณฑ์อาหาร"
+        },
+        {
+            "faculty": "🏛️ คณะสถาปัตยกรรมศาสตร์ / ภูมิสถาปัตย์ (Architecture)",
+            "condition_symbol": r"(M_{INTJ} \lor M_{ISTP} \lor M_{ISFP} \lor M_{ENTJ}) \land R \land (P \lor W)",
+            "eval": (mbti in ["INTJ", "ISTP", "ISFP", "ENTJ"]) and is_art_design and (is_math_sci or is_practical),
+            "rule_desc": "ต้องเป็น (INTJ, ISTP, ISFP, ENTJ) AND สนใจการออกแบบ AND (วิทย์/คณิต หรือ งานปฏิบัติ)",
+            "careers": "สถาปนิก, ภูมิสถาปนิก, นักออกแบบอาคาร, นักออกแบบพื้นที่"
+        },
+        {
+            "faculty": "🏛️ คณะบัญชี / ตรวจสอบ / ภาษี (Accounting & Audit)",
+            "condition_symbol": r"(M_{ISTJ} \lor M_{ESTJ} \lor M_{INTJ} \lor M_{ISTP}) \land S \land (P \lor O)",
+            "eval": (mbti in ["ISTJ", "ESTJ", "INTJ", "ISTP"]) and is_biz_finance and (is_math_sci or is_operations),
+            "rule_desc": "ต้องเป็น (ISTJ, ESTJ, INTJ, ISTP) AND สนใจการเงิน AND (วิทย์/คณิต หรือ ระบบงาน)",
+            "careers": "นักบัญชี, ผู้สอบบัญชี, ที่ปรึกษาภาษี, ผู้ควบคุมภายใน"
+        },
+        {
+            "faculty": "🏛️ คณะผู้ประกอบการ / การขาย / พาณิชย์อิเล็กทรอนิกส์ (Entrepreneurship & Sales)",
+            "condition_symbol": r"(M_{ENTJ} \lor M_{ENTP} \lor M_{ENFP} \lor M_{ESTP}) \land S \land (R \lor T)",
+            "eval": (mbti in ["ENTJ", "ENTP", "ENFP", "ESTP"]) and is_biz_finance and (is_art_design or is_social_people),
+            "rule_desc": "ต้องเป็น (ENTJ, ENTP, ENFP, ESTP) AND สนใจธุรกิจ AND (ความคิดสร้างสรรค์ หรือ การสื่อสาร)",
+            "careers": "ผู้ประกอบการ, นักขาย, Business Development, เจ้าของธุรกิจออนไลน์"
+        },
+        {
+            "faculty": "🏛️ คณะดนตรี / ศิลปะการแสดง / ภาพยนตร์ (Performing Arts)",
+            "condition_symbol": r"(M_{ISFP} \lor M_{ESFP} \lor M_{ENFP} \lor M_{INFP}) \lan� R \land (T \lor A)",
+            "eval": (mbti in ["ISFP", "ESFP", "ENFP", "INFP"]) and is_art_design and (is_social_people or is_sport),
+            "rule_desc": "ต้องเป็น (ISFP, ESFP, ENFP, INFP) AND สนใจศิลปะ AND (การสื่อสารกับผู้คน หรือ การเคลื่อนไหว)",
+            "careers": "นักดนตรี, นักแสดง, ผู้กำกับ, นักตัดต่อภาพยนตร์, ศิลปิน"
+        },
+        {
+            "faculty": "🏛️ คณะภาษา / มนุษยศาสตร์ / ล่ามและการแปล (Languages & Humanities)",
+            "condition_symbol": r"(M_{ENFJ} \lor M_{ENFP} \lor M_{INFJ} \lor M_{INTP}) \land L \land (T \lor R)",
+            "eval": (mbti in ["ENFJ", "ENFP", "INFJ", "INTP"]) and is_language and (is_social_people or is_art_design),
+            "rule_desc": "ต้องเป็น (ENFJ, ENFP, INFJ, INTP) AND สนใจภาษา AND (สังคม/ผู้คน หรือ งานสร้างสรรค์)",
+            "careers": "นักแปล, ล่าม, นักเขียน, บรรณาธิการ, นักภาษาศาสตร์"
+        },
+        {
+            "faculty": "🏛️ คณะครุศาสตร์ / ศึกษาศาสตร์ / การฝึกอบรม (Education)",
+            "condition_symbol": r"(M_{ENFJ} \lor M_{ESFJ} \lor M_{INFJ} \lor M_{ISFJ}) \land E \land (T \lor L \lor C)",
+            "eval": (mbti in ["ENFJ", "ESFJ", "INFJ", "ISFJ"]) and is_education and (is_social_people or is_language or is_helping),
+            "rule_desc": "ต้องเป็น (ENFJ, ESFJ, INFJ, ISFJ) AND สนใจการศึกษา AND (ผู้คน ภาษา หรือ การช่วยเหลือ)",
+            "careers": "ครู, อาจารย์, นักออกแบบการเรียนรู้, วิทยากร, ผู้เชี่ยวชาญพัฒนาบุคลากร"
+        },
+        {
+            "faculty": "🏛️ คณะจิตวิทยา / ทรัพยากรมนุษย์ / การแนะแนว (Psychology & HR)",
+            "condition_symbol": r"(M_{INFJ} \lor M_{INFP} \lor M_{ENFJ} \lor M_{ENFP}) \land (T \lor C) \land (H \lor E)",
+            "eval": (mbti in ["INFJ", "INFP", "ENFJ", "ENFP"]) and (is_social_people or is_helping) and (is_healthcare or is_education),
+            "rule_desc": "ต้องเป็น (INFJ, INFP, ENFJ, ENFP) AND สนใจผู้คน/การช่วยเหลือ AND (สุขภาพจิต หรือ การพัฒนาคน)",
+            "careers": "นักจิตวิทยา, นักแนะแนว, HR Business Partner, นักพัฒนาทรัพยากรมนุษย์"
+        },
+        {
+            "faculty": "🏛️ คณะความสัมพันธ์ระหว่างประเทศ / การทูต (International Relations)",
+            "condition_symbol": r"(M_{ENFJ} \lor M_{ENFP} \lor M_{INFJ} \lor M_{ENTJ}) \land J \land (L \lor T)",
+            "eval": (mbti in ["ENFJ", "ENFP", "INFJ", "ENTJ"]) and is_legal and (is_language or is_social_people),
+            "rule_desc": "ต้องเป็น (ENFJ, ENFP, INFJ, ENTJ) AND สนใจกฎหมาย/นโยบาย AND (ภาษา หรือ สังคม)",
+            "careers": "นักการทูต, นักวิเคราะห์นโยบายต่างประเทศ, เจ้าหน้าที่องค์กรระหว่างประเทศ"
+        },
+        {
+            "faculty": "🏛️ คณะสังคมสงเคราะห์ / พัฒนาชุมชน / NGO (Social Development)",
+            "condition_symbol": r"(M_{INFJ} \lor M_{ENFJ} \lor M_{ISFJ} \lor M_{INFP}) \land C \land (T \lor J)",
+            "eval": (mbti in ["INFJ", "ENFJ", "ISFJ", "INFP"]) and is_helping and (is_social_people or is_legal),
+            "rule_desc": "ต้องเป็น (INFJ, ENFJ, ISFJ, INFP) AND สนใจการช่วยเหลือ AND (สังคม หรือ สิทธิ/นโยบาย)",
+            "careers": "นักสังคมสงเคราะห์, นักพัฒนาชุมชน, เจ้าหน้าที่ NGO, นักสิทธิมนุษยชน"
+        },
+        {
+            "faculty": "🏛️ คณะเกษตรศาสตร์ / สิ่งแวดล้อม / ทรัพยากรธรรมชาติ (Environment & Agriculture)",
+            "condition_symbol": r"(M_{ISFP} \lor M_{ISTP} \lor M_{ISFJ} \lor M_{ESTP}) \land N \land (P \lor W)",
+            "eval": (mbti in ["ISFP", "ISTP", "ISFJ", "ESTP"]) and is_nature and (is_math_sci or is_practical),
+            "rule_desc": "ต้องเป็น (ISFP, ISTP, ISFJ, ESTP) AND สนใจธรรมชาติ AND (วิทย์/คณิต หรือ งานปฏิบัติ)",
+            "careers": "นักสิ่งแวดล้อม, นักวิชาการเกษตร, นักวนศาสตร์, นักอนุรักษ์ทรัพยากร"
+        },
+        {
+            "faculty": "🏛️ คณะสัตวแพทยศาสตร์ / ประมง / วิทยาศาสตร์สัตว์ (Animal & Marine Science)",
+            "condition_symbol": r"(M_{ISTJ} \lor M_{ISFJ} \lor M_{ISFP} \lor M_{INTJ}) \land N \land (H \lor P)",
+            "eval": (mbti in ["ISTJ", "ISFJ", "ISFP", "INTJ"]) and is_nature and (is_healthcare or is_math_sci),
+            "rule_desc": "ต้องเป็น (ISTJ, ISFJ, ISFP, INTJ) AND สนใจธรรมชาติ/สัตว์ AND (สุขภาพ หรือ วิทย์/คณิต)",
+            "careers": "สัตวแพทย์, นักประมง, นักวิทยาศาสตร์ทางทะเล, นักวิจัยสัตว์"
+        },
+        {
+            "faculty": "🏛️ คณะวิทยาศาสตร์การกีฬา / พลศึกษา / ฟิตเนส (Sports Science)",
+            "condition_symbol": r"(M_{ESTP} \lor M_{ESFP} \lor M_{ISTP} \lor M_{ISFP}) \land A \land (H \lor T \lor C)",
+            "eval": (mbti in ["ESTP", "ESFP", "ISTP", "ISFP"]) and is_sport and (is_healthcare or is_social_people or is_helping),
+            "rule_desc": "ต้องเป็น (ESTP, ESFP, ISTP, ISFP) AND สนใจกีฬา AND (สุขภาพ หรือ ผู้คน/การช่วยเหลือ)",
+            "careers": "นักวิทยาศาสตร์การกีฬา, เทรนเนอร์, โค้ช, นักกายภาพด้านกีฬา"
+        },
+        {
+            "faculty": "🏛️ คณะคหกรรมศาสตร์ / การอาหาร / การโรงแรม (Culinary & Hospitality)",
+            "condition_symbol": r"(M_{ISFP} \lor M_{ESFP} \lor M_{ISTP} \lor M_{ESTP}) \land (F \lor V) \land (R \lor T)",
+            "eval": (mbti in ["ISFP", "ESFP", "ISTP", "ESTP"]) and (is_food or is_travel) and (is_art_design or is_social_people),
+            "rule_desc": "ต้องเป็น (ISFP, ESFP, ISTP, ESTP) AND สนใจอาหาร/บริการ AND (สร้างสรรค์ หรือ ผู้คน)",
+            "careers": "เชฟ, นักพัฒนาเมนู, ผู้จัดการโรงแรม, ผู้ประกอบการร้านอาหาร"
+        },
+        {
+            "faculty": "🏛️ คณะการท่องเที่ยว / การโรงแรม / ธุรกิจการบิน (Tourism & Aviation)",
+            "condition_symbol": r"(M_{ESFP} \lor M_{ENFP} \lor M_{ESFJ} \lor M_{ESTP}) \land V \land (L \lor T)",
+            "eval": (mbti in ["ESFP", "ENFP", "ESFJ", "ESTP"]) and is_travel and (is_language or is_social_people),
+            "rule_desc": "ต้องเป็น (ESFP, ENFP, ESFJ, ESTP) AND สนใจท่องเที่ยว/บริการ AND (ภาษา หรือ ผู้คน)",
+            "careers": "มัคคุเทศก์, ผู้จัดการโรงแรม, เจ้าหน้าที่สายการบิน, นักวางแผนท่องเที่ยว"
+        },
+        {
+            "faculty": "🏛️ คณะโลจิสติกส์ / ซัพพลายเชน / การจัดการปฏิบัติการ (Operations & Logistics)",
+            "condition_symbol": r"(M_{ESTJ} \lor M_{ISTJ} \lor M_{ENTJ} \lor M_{ESTP}) \land O \land (S \lor P)",
+            "eval": (mbti in ["ESTJ", "ISTJ", "ENTJ", "ESTP"]) and is_operations and (is_biz_finance or is_math_sci),
+            "rule_desc": "ต้องเป็น (ESTJ, ISTJ, ENTJ, ESTP) AND สนใจระบบงาน AND (ธุรกิจ หรือ วิทย์/คณิต)",
+            "careers": "ผู้จัดการโลจิสติกส์, นักวางแผนซัพพลายเชน, Operations Manager, ผู้ควบคุมคลังสินค้า"
+        },
+        {
+            "faculty": "🏛️ คณะอุตสาหกรรมการผลิต / วิศวกรรมเครื่องกล / งานช่าง (Industrial & Skilled Trades)",
+            "condition_symbol": r"(M_{ISTP} \lor M_{ISFP} \lor M_{ESTP} \lor M_{ISTJ}) \land W \land (P \lor O)",
+            "eval": (mbti in ["ISTP", "ISFP", "ESTP", "ISTJ"]) and is_practical and (is_math_sci or is_operations),
+            "rule_desc": "ต้องเป็น (ISTP, ISFP, ESTP, ISTJ) AND สนใจงานช่าง/ลงมือทำ AND (วิทย์/คณิต หรือ ระบบงาน)",
+            "careers": "ช่างเทคนิค, วิศวกรเครื่องกล, ช่างยนต์, ผู้ควบคุมการผลิต, ช่างไฟฟ้า"
+        },
+        {
+            "faculty": "🏛️ คณะก่อสร้าง / โยธา / อสังหาริมทรัพย์ (Construction & Property)",
+            "condition_symbol": r"(M_{ESTJ} \lor M_{ENTJ} \lor M_{ISTP} \lor M_{ESTP}) \land W \land (S \lor P)",
+            "eval": (mbti in ["ESTJ", "ENTJ", "ISTP", "ESTP"]) and is_practical and (is_biz_finance or is_math_sci),
+            "rule_desc": "ต้องเป็น (ESTJ, ENTJ, ISTP, ESTP) AND สนใจงานก่อสร้าง/ปฏิบัติ AND (ธุรกิจ หรือ วิทย์/คณิต)",
+            "careers": "วิศวกรโยธา, ผู้ควบคุมงานก่อสร้าง, นักประเมินอสังหาริมทรัพย์, ผู้จัดการโครงการ"
+        },
+        {
+            "faculty": "🏛️ คณะความมั่นคง / ตำรวจ / ทหาร / กู้ภัย (Security & Emergency)",
+            "condition_symbol": r"(M_{ISTJ} \lor M_{ESTJ} \lor M_{ISTP} \lor M_{ESTP}) \land K \land (T \lor W)",
+            "eval": (mbti in ["ISTJ", "ESTJ", "ISTP", "ESTP"]) and is_security and (is_social_people or is_practical),
+            "rule_desc": "ต้องเป็น (ISTJ, ESTJ, ISTP, ESTP) AND สนใจความปลอดภัย AND (สังคม/กฎระเบียบ หรือ งานปฏิบัติ)",
+            "careers": "ตำรวจ, ทหาร, นักกู้ภัย, เจ้าหน้าที่ความปลอดภัย, นักนิติวิทยาศาสตร์"
+        },
+        {
+            "faculty": "🏛️ คณะสารสนเทศศาสตร์ / บรรณารักษศาสตร์ / จดหมายเหตุ (Information & Archives)",
+            "condition_symbol": r"(M_{ISTJ} \lor M_{ISFJ} \lor M_{INTP} \lor M_{INTJ}) \land (Q \lor T) \land (X \lor L)",
+            "eval": (mbti in ["ISTJ", "ISFJ", "INTP", "INTJ"]) and (is_tech or is_social_people) and (is_research or is_language),
+            "rule_desc": "ต้องเป็น (ISTJ, ISFJ, INTP, INTJ) AND สนใจเทคโนโลยี/ข้อมูล AND (วิจัย หรือ ภาษา)",
+            "careers": "นักสารสนเทศ, บรรณารักษ์ดิจิทัล, นักจดหมายเหตุ, ผู้ดูแลฐานข้อมูล"
+        },
+        {
+            "faculty": "🏛️ คณะการบิน / การขนส่ง / ควบคุมการจราจร (Transportation)",
+            "condition_symbol": r"(M_{ESTP} \lor M_{ISTP} \lor M_{ENTJ} \lor M_{ESTJ}) \land (V \lor O) \land (P \lor K)",
+            "eval": (mbti in ["ESTP", "ISTP", "ENTJ", "ESTJ"]) and (is_travel or is_operations) and (is_math_sci or is_security),
+            "rule_desc": "ต้องเป็น (ESTP, ISTP, ENTJ, ESTJ) AND สนใจการเดินทาง/ระบบงาน AND (วิทย์/คณิต หรือ ความปลอดภัย)",
+            "careers": "นักบิน, เจ้าหน้าที่ควบคุมการจราจรทางอากาศ, ผู้จัดการขนส่ง, เจ้าหน้าที่ปฏิบัติการสนามบิน"
+        }
+    ]
+
+    matched_faculties = []
+
+    for item in faculties_rules:
+        st.markdown(f"#### {item['faculty']}")
+        st.latex(rf"\text{{เงื่อนไข: }} {item['condition_symbol']}")
+        st.write(f"**คำอธิบายเงื่อนไข:** {item['rule_desc']}")
+        st.write(f"**อาชีพที่แนะนำ:** {item['careers']}")
+        
+        if item['eval']:
+            st.success("ผลลัพธ์ทางตรรกศาสตร์: **TRUE (จริง - ตรงตามเงื่อนไขสายนี้)**")
+            matched_faculties.append((item['faculty'], item['careers']))
+        else:
+            st.error("ผลลัพธ์ทางตรรกศาสตร์: **FALSE (เท็จ - ไม่ตรงตามเงื่อนไข)**")
+        st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.subheader("🎯 สรุปคณะและอาชีพที่ตรงตามเงื่อนไขตรรกศาสตร์ของคุณ")
+    
+    if matched_faculties:
+        st.balloons()
+        for fac_title, careers in matched_faculties:
+            st.markdown(f"- ✅ **{fac_title}**")
+            st.caption(f"  └ อาชีพที่เหมาะสม: {careers}")
+    else:
+        st.warning("ยังไม่พบคณะที่ตรงตามเงื่อนไขตรรกศาสตร์แบบสมบูรณ์ (ลองปรับเปลี่ยนการประเมินความชอบใน Step 3)")
+
+    st.markdown("---")
+    if st.button("🔄 เริ่มทำแบบประเมินใหม่ทั้งหมด"):
+        st.session_state.clear()
         st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
