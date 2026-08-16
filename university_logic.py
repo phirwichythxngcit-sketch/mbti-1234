@@ -18,8 +18,6 @@ FACULTY_RULES = [
     {"id": "F10", "faculty": "มนุษยศาสตร์ / ภาษา / การแปล / ความสัมพันธ์ระหว่างประเทศ", "mbti": {"INFJ", "INFP", "ENFP", "ENFJ"}, "needs": ("social", "art_or_business")},
 ]
 
-# Example university candidates. These are recommendation examples, not
-# admissions guarantees; the funding level only filters the recommendation tier.
 UNIVERSITY_RULES = [
     {"id": "U01", "name": "จุฬาลงกรณ์มหาวิทยาลัย", "faculty_ids": {"F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08", "F09", "F10"}, "funding": "สูง"},
     {"id": "U02", "name": "มหาวิทยาลัยมหิดล", "faculty_ids": {"F02", "F03", "F06", "F09", "F10"}, "funding": "สูง"},
@@ -32,6 +30,8 @@ UNIVERSITY_RULES = [
     {"id": "U09", "name": "มหาวิทยาลัยสุโขทัยธรรมาธิราช", "faculty_ids": {"F04", "F05", "F08", "F09", "F10"}, "funding": "ต่ำ"},
     {"id": "U10", "name": "มหาวิทยาลัยราชภัฏ", "faculty_ids": {"F04", "F05", "F08", "F09", "F10"}, "funding": "ต่ำ"},
 ]
+
+FUNDING_SYMBOLS = {"สูง": "B_H", "กลาง": "B_M", "ต่ำ": "B_L"}
 
 
 def evaluate_faculty(rule: dict, mbti: str, interests: dict) -> bool:
@@ -60,18 +60,15 @@ def evaluate_faculty(rule: dict, mbti: str, interests: dict) -> bool:
 
 
 def build_faculty_results(mbti: str, interests: dict) -> list[dict]:
-    results = []
-    for rule in FACULTY_RULES:
-        results.append({
-            **rule,
-            "proposition": rule["id"],
-            "true": evaluate_faculty(rule, mbti, interests),
-        })
-    return results
+    return [
+        {**rule, "proposition": rule["id"], "true": evaluate_faculty(rule, mbti, interests)}
+        for rule in FACULTY_RULES
+    ]
 
 
-def build_university_results(matched_faculties: list[dict], funding_level: str) -> list[dict]:
-    matched_ids = {item["id"] for item in matched_faculties if item["true"]}
+def build_university_results(faculty_results: list[dict], funding_level: str) -> list[dict]:
+    matched_ids = {item["id"] for item in faculty_results if item["true"]}
+    funding_symbol = FUNDING_SYMBOLS[funding_level]
     results = []
     for university in UNIVERSITY_RULES:
         faculty_ids = sorted(matched_ids.intersection(university["faculty_ids"]))
@@ -81,7 +78,7 @@ def build_university_results(matched_faculties: list[dict], funding_level: str) 
                     **university,
                     "faculty_id": faculty_id,
                     "proposition": university["id"],
-                    "logic": f"{faculty_id} ∧ B_{funding_level[0].upper()}",
+                    "logic": f"{faculty_id} ∧ {funding_symbol}",
                     "true": True,
                 })
     return results
