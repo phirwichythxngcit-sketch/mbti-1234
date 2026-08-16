@@ -256,8 +256,7 @@ elif st.session_state.step == 4:
     mbti = st.session_state.mbti_result
     cat_scores = st.session_state.get("category_scores", {})
 
-    # ฟังก์ชันช่วยเช็กคะแนนในแต่ละหมวดว่าสูงกว่าเกณฑ์ปานกลางไหม
-    # category_scores เป็นคะแนนรวมของคำถามในหมวดนั้น
+    # ฟังก์ชันช่วยเช็กคะแนนในแต่ละหมวดว่าสูงกว่าเกณฑ์ปานกลางไหม (คะแนนเฉลี่ย >= 3 ต่อข้อ)
     def is_category_high(keywords):
         for cat, score in cat_scores.items():
             if any(kw.lower() in cat.lower() for kw in keywords):
@@ -271,59 +270,6 @@ elif st.session_state.step == 4:
     is_art_design = is_category_high(["art", "ศิลปะ", "ออกแบบ", "design", "สร้างสรรค์", "บันเทิง"])
     is_biz_finance = is_category_high(["finance", "การเงิน", "ธุรกิจ", "การบริหาร", "การลงทุน", "การตลาด", "การค้า"])
     is_social_people = is_category_high(["social", "สังคม", "ภาษา", "จิตวิทยา", "การบริการ", "การสื่อสาร", "บริหารคน"])
-    
-    # ประพจน์ย่อยสำหรับจำแนกสายอาชีพเฉพาะทาง
-    is_healthcare = is_category_high([
-        "สุขภาพ", "health", "แพทย", "พยาบาล", "เภสัช", "สาธารณสุข",
-        "กายภาพ", "วิทยาศาสตร์การแพทย์", "โภชนาการ"
-    ])
-    is_language = is_category_high([
-        "ภาษา", "language", "อังกฤษ", "ไทย", "จีน", "ญี่ปุ่น",
-        "แปล", "ล่าม", "วรรณกรรม", "มนุษยศาสตร์"
-    ])
-    is_education = is_category_high([
-        "การศึกษา", "an�รู", "สอน", "education", "พัฒนาคน", "ฝึกอบรม"
-    ])
-    is_helping = is_category_high([
-        "ช่วยเหลือ", "จิตอาสา", "สังคมสงเคราะห์", "ชุมชน", "ผู้คน",
-        "สุขภาพจิต", "ให้คำปรึกษา", "counseling", "พัฒนาสังคม"
-    ])
-    is_nature = is_category_high([
-        "ธรรมชาติ", "สิ่งแวดล้อม", "เกษตร", "ป่าไม้", "สัตว์",
-        "ทะเล", "ภูมิศาสตร์", "ทรัพยากร", "environment", "เกษตรกรรม"
-    ])
-    is_research = is_category_high([
-        "วิจัย", "research", "ทดลอง", "ห้องปฏิบัติการ", "วิชาการ",
-        "วิเคราะห์ข้อมูล", "สถิติ", "ค้นคว้า"
-    ])
-    is_operations = is_category_high([
-        "การจัดการ", "ปฏิบัติการ", "โลจิสติกส์", "ขนส่ง", "ซัพพลายเชน",
-        "วางแผน", "ระบบงาน", "ควบคุมคุณภาพ", "operations"
-    ])
-    is_security = is_category_high([
-        "ความปลอดภัย", "ทหาร", "ตำรวจ", "กู้ภัย", "ฉุกเฉิน",
-        "นิติวิทยาศาสตร์", "security", "ป้องกันประเทศ"
-    ])
-    is_sport = is_category_high([
-        "กีฬา", "ออกกำลังกาย", "ฟิตเนส", "sport", "การเคลื่อนไหว",
-        "สุขภาพกาย", "โค้ชกีฬา"
-    ])
-    is_food = is_category_high([
-        "อาหาร", "ทำอาหาร", "เชฟ", "เบเกอรี่", "เครื่องดื่ม",
-        "โภชนาการ", "food", "คหกรรม"
-    ])
-    is_travel = is_category_high([
-        "ท่องเที่ยว", "โรงแรม", "การบิน", "การโรงแรม", "ทัวร์",
-        "บริการ", "hospitality", "tourism"
-    ])
-    is_practical = is_category_high([
-        "ช่าง", "งานฝีมือ", "เครื่องจักร", "ก่อสร้าง", "ลงมือทำ",
-        "ประดิษฐ์", "ซ่อมแซม", "อุตสาหกรรม", "ช่างยนต์"
-    ])
-    is_legal = is_category_high([
-        "กฎหมาย", "การเมือง", "รัฐศาสตร์", "นโยบาย", "การปกครอง",
-        "สิทธิมนุษยชน", "law", "การทูต"
-    ])
 
     st.markdown("### 1. สรุปประพจน์ความสนใจและศักยภาพ (Propositions Setup)")
     col_p1, col_p2 = st.columns(2)
@@ -335,242 +281,170 @@ elif st.session_state.step == 4:
         st.write(f"- **ประพจน์ $R$ (สนใจศิลปะ/การออกแบบ/งานสร้างสรรค์)** = `{is_art_design}`")
         st.write(f"- **ประพจน์ $S$ (สนใจบริหาร/การเงิน/ธุรกิจ)** = `{is_biz_finance}`")
         st.write(f"- **ประพจน์ $T$ (สนใจมนุษยศาสตร์/สังคม/จิตวิทยา/ภาษา)** = `{is_social_people}`")
-    
-    with st.expander("ดูประพจน์ย่อยสำหรับสายอาชีพเฉพาะทาง"):
-        secondary_props = {
-            "H": ("สุขภาพและการแพทย์", is_healthcare),
-            "L": ("ภาษาและมนุษยศาสตร์", is_language),
-            "E": ("การศึกษาและการพัฒนาคน", is_education),
-            "C": ("การช่วยเหลือคนและชุมชน", is_helping),
-            "N": ("ธรรมชาติและสิ่งแวดล้อม", is_nature),
-            "X": ("การวิจัยและวิชาการ", is_research),
-            "O": ("ปฏิบัติการและการจัดการระบบ", is_operations),
-            "K": ("ความปลอดภัยและงานฉุกเฉิน", is_security),
-            "A": ("กีฬาและการเคลื่อนไหว", is_sport),
-            "F": ("อาหารและโภชนาการ", is_food),
-            "V": ("การเดินทางและการบริการ", is_travel),
-            "W": ("งานช่างและงานปฏิบัติ", is_practical),
-            "J": ("กฎหมายและนโยบาย", is_legal),
-        }
-        prop_cols = st.columns(3)
-        for idx, (code, (label, value)) in enumerate(secondary_props.items()):
-            with prop_cols[idx % 3]:
-                st.write(f"**{code}** — {label}: `{value}`")
 
     st.markdown("---")
     st.markdown("### 2. ตรวจสอบเงื่อนไขทางตรรกศาสตร์ของแต่ละสายคณะและอาชีพ")
     
-    # นิยามเงื่อนไขตรรกศาสตร์ครอบคลุมสายคณะและอาชีพหลัก
+    # นิยามเงื่อนไขตรรกศาสตร์ครอบคลุมทุกสายอาชีพ
+    # M_{TYPE} = ผล MBTI, P = วิทย์/คณิต, Q = เทคโนโลยี,
+    # R = ศิลปะ/ความสร้างสรรค์, S = ธุรกิจ/การเงิน,
+    # T = มนุษยศาสตร์/สังคม/ภาษา/การช่วยเหลือผู้คน
+    #
+    # แต่ละกฎเป็น "แนวทางเบื้องต้น" ไม่ใช่การตัดสินความสามารถของผู้ทำแบบประเมิน
     faculties_rules = [
         {
-            "faculty": "🏛️ คณะวิศวกรรมศาสตร์ / เทคโนโลยีสารสนเทศ (Engineers & Developers)",
+            "faculty": "🏛️ คณะวิศวกรรมศาสตร์ / เทคโนโลยีสารสนเทศ (Engineering & IT)",
             "condition_symbol": r"(M_{INTJ} \lor M_{INTP} \lor M_{ENTP} \lor M_{ISTP}) \land Q \land (P \lor S)",
             "eval": (mbti in ["INTJ", "INTP", "ENTP", "ISTP"]) and is_tech and (is_math_sci or is_biz_finance),
-            "rule_desc": "ต้องเป็น (INTJ, INTP, ENTP, ISTP) AND สนใจเทคโนโลยี (Q) AND (สนใจวิทย์/คณิต หรือ การเงิน)",
-            "careers": "วิศวกรซอฟต์แวร์, นักพัฒนาระบบ, Data Scientist, วิศวกรเครือข่าย"
+            "rule_desc": "ต้องเป็น (INTJ, INTP, ENTP, ISTP) AND สนใจเทคโนโลยี (Q) AND (สนใจวิทย์/คณิต หรือ ธุรกิจ/การเงิน)",
+            "careers": "วิศวกรซอฟต์แวร์, นักพัฒนาระบบ, วิศวกรเครือข่าย, วิศวกรระบบอัตโนมัติ"
         },
         {
-            "faculty": "🏛️ คณะแพทยศาสตร์ / เภสัชศาสตร์ / จิตวิทยาคลินิก (Healthcare & Medical Sciences)",
+            "faculty": "🏛️ คณะวิทยาการข้อมูล / ปัญญาประดิษฐ์ / สถิติ (Data & AI)",
+            "condition_symbol": r"(M_{INTJ} \lor M_{INTP} \lor M_{ISTJ} \lor M_{ENTP}) \land P \land Q",
+            "eval": (mbti in ["INTJ", "INTP", "ISTJ", "ENTP"]) and is_math_sci and is_tech,
+            "rule_desc": "ต้องเป็น (INTJ, INTP, ISTJ, ENTP) AND สนใจวิทย์/คณิต (P) AND สนใจเทคโนโลยี (Q)",
+            "careers": "Data Scientist, นักสถิติ, นักวิเคราะห์ข้อมูล, Machine Learning Engineer"
+        },
+        {
+            "faculty": "🏛️ คณะแพทยศาสตร์ / เภสัชศาสตร์ / สหเวชศาสตร์ (Healthcare & Medical Sciences)",
             "condition_symbol": r"(M_{INFJ} \lor M_{INTJ} \lor M_{ISFJ} \lor M_{ENFJ}) \land P \land T",
             "eval": (mbti in ["INFJ", "INTJ", "ISFJ", "ENFJ"]) and is_math_sci and is_social_people,
-            "rule_desc": "ต้องเป็น (INFJ, INTJ, ISFJ, ENFJ) AND สนใจวิทย์ (P) AND สนใจสังคม/ช่วยเหลือคน (T)",
-            "careers": "แพทย์, เภสัชกร, นักจิตวิทยาคลินิก, นักวิจัยทางแพทย์"
+            "rule_desc": "ต้องเป็น (INFJ, INTJ, ISFJ, ENFJ) AND สนใจวิทยาศาสตร์ (P) AND สนใจการช่วยเหลือคน (T)",
+            "careers": "แพทย์, เภสัชกร, นักกายภาพบำบัด, นักเทคนิคการแพทย์, นักวิจัยทางการแพทย์"
+        },
+        {
+            "faculty": "🏛️ คณะพยาบาลศาสตร์ / สาธารณสุขศาสตร์ / โภชนาการ (Care & Public Health)",
+            "condition_symbol": r"(M_{ISFJ} \lor M_{ESFJ} \lor M_{ENFJ} \lor M_{INFJ}) \land P \land T",
+            "eval": (mbti in ["ISFJ", "ESFJ", "ENFJ", "INFJ"]) and is_math_sci and is_social_people,
+            "rule_desc": "ต้องเป็น (ISFJ, ESFJ, ENFJ, INFJ) AND สนใจวิทยาศาสตร์ (P) AND สนใจผู้คน/ชุมชน (T)",
+            "careers": "พยาบาล, นักสาธารณสุข, นักโภชนาการ, ผู้จัดการงานสุขภาพชุมชน"
+        },
+        {
+            "faculty": "🏛️ คณะจิตวิทยา / สังคมสงเคราะห์ / การพัฒนาชุมชน (Psychology & Social Care)",
+            "condition_symbol": r"(M_{INFJ} \lor M_{INFP} \lor M_{ENFJ} \lor M_{ISFJ}) \land T",
+            "eval": (mbti in ["INFJ", "INFP", "ENFJ", "ISFJ"]) and is_social_people,
+            "rule_desc": "ต้องเป็น (INFJ, INFP, ENFJ, ISFJ) AND สนใจจิตใจมนุษย์ สังคม หรือการช่วยเหลือคน (T)",
+            "careers": "นักจิตวิทยา, นักสังคมสงเคราะห์, นักพัฒนาชุมชน, นักให้คำปรึกษา"
         },
         {
             "faculty": "🏛️ คณะบริหารธุรกิจ / เศรษฐศาสตร์ / การบัญชีและการเงิน (Business & Finance)",
             "condition_symbol": r"(M_{ENTJ} \lor M_{ESTJ} \lor M_{ESTP} \lor M_{ENTP}) \land S",
             "eval": (mbti in ["ENTJ", "ESTJ", "ESTP", "ENTP"]) and is_biz_finance,
             "rule_desc": "ต้องเป็น (ENTJ, ESTJ, ESTP, ENTP) AND สนใจธุรกิจและการเงิน (S)",
-            "careers": "นักลงทุน, ผู้ประกอบการ, นักวิเคราะห์การเงิน, ผู้จัดการฝ่ายกลยุทธ์"
+            "careers": "นักลงทุน, ผู้ประกอบการ, นักวิเคราะห์การเงิน, ผู้จัดการฝ่ายกลยุทธ์, นักบัญชี"
+        },
+        {
+            "faculty": "🏛️ คณะการตลาด / การขาย / พาณิชย์อิเล็กทรอนิกส์ (Marketing & Sales)",
+            "condition_symbol": r"(M_{ENTP} \lor M_{ENFP} \lor M_{ESTP} \lor M_{ESFP}) \land (S \lor R) \land T",
+            "eval": (mbti in ["ENTP", "ENFP", "ESTP", "ESFP"]) and (is_biz_finance or is_art_design) and is_social_people,
+            "rule_desc": "ต้องเป็น (ENTP, ENFP, ESTP, ESFP) AND (สนใจธุรกิจ หรือ ความสร้างสรรค์) AND สื่อสารกับผู้คนได้ดี (T)",
+            "careers": "นักการตลาด, ฝ่ายขาย, Brand Manager, E-commerce Manager, นักวางกลยุทธ์การตลาด"
         },
         {
             "faculty": "🏛️ คณะศิลปกรรมศาสตร์ / UX-UI Design / สื่อดิจิทัล (Arts & Creative Design)",
             "condition_symbol": r"(M_{INFP} \lor M_{ISFP} \lor M_{ENFP} \lor M_{ENTP}) \land R",
             "eval": (mbti in ["INFP", "ISFP", "ENFP", "ENTP"]) and is_art_design,
-            "rule_desc": "ต้องเป็น (INFP, ISFP, ENFP, ENTP) AND สนใจงานศิลป์/สร้างสรรค์ (R)",
-            "careers": "UX/UI Designer, กราฟิกดีไซเนอร์, ครีเอทีฟ, แอนิเมเตอร์"
+            "rule_desc": "ต้องเป็น (INFP, ISFP, ENFP, ENTP) AND สนใจงานศิลป์/ออกแบบ/สร้างสรรค์ (R)",
+            "careers": "UX/UI Designer, กราฟิกดีไซเนอร์, ครีเอทีฟ, แอนิเมเตอร์, นักออกแบบผลิตภัณฑ์"
         },
         {
-            "faculty": "🏛️ คณะนิเทศศาสตร์ / อักษรศาสตร์ / การตลาดและสื่อสาร (Communications & Media)",
+            "faculty": "🏛️ คณะสถาปัตยกรรมศาสตร์ / ออกแบบผลิตภัณฑ์ / ภูมิสถาปัตย์ (Architecture & Built Environment)",
+            "condition_symbol": r"(M_{INTJ} \lor M_{ENTP} \lor M_{ISFP} \lor M_{ISTP}) \land R \land (P \lor Q)",
+            "eval": (mbti in ["INTJ", "ENTP", "ISFP", "ISTP"]) and is_art_design and (is_math_sci or is_tech),
+            "rule_desc": "ต้องเป็น (INTJ, ENTP, ISFP, ISTP) AND สนใจการออกแบบ (R) AND (สนใจวิทย์/คณิต หรือ เทคโนโลยี)",
+            "careers": "สถาปนิก, นักออกแบบผลิตภัณฑ์, นักออกแบบภายใน, ภูมิสถาปนิก, 3D Artist"
+        },
+        {
+            "faculty": "🏛️ คณะนิเทศศาสตร์ / อักษรศาสตร์ / การสื่อสารและสื่อ (Communications & Media)",
             "condition_symbol": r"(M_{ENFP} \lor M_{ESFP} \lor M_{ENFJ} \lor M_{ENTP}) \land (R \lor S \lor T)",
             "eval": (mbti in ["ENFP", "ESFP", "ENFJ", "ENTP"]) and (is_art_design or is_biz_finance or is_social_people),
-            "rule_desc": "ต้องเป็น (ENFP, ESFP, ENFJ, ENTP) AND (สนใจศิลป์ หรือ ธุรกิจ หรือ สื่อสารสังคม)",
-            "careers": "นักการตลาดดิจิทัล, PR Manager, นักเขียน/นักคอนเทนต์, ผู้จัดรายการ"
+            "rule_desc": "ต้องเป็น (ENFP, ESFP, ENFJ, ENTP) AND (สนใจศิลป์ หรือ ธุรกิจ หรือ สังคม/ภาษา)",
+            "careers": "นักการตลาดดิจิทัล, PR Manager, นักเขียน/นักทำคอนเทนต์, ผู้จัดรายการ, ผู้ผลิตสื่อ"
         },
         {
-            "faculty": "🏛️ คณะนิติศาสตร์ / รัฐศาสตร์ / สังคมสงเคราะห์ (Law & Public Administration)",
+            "faculty": "🏛️ คณะนิติศาสตร์ / รัฐศาสตร์ / รัฐประศาสนศาสตร์ (Law & Public Administration)",
             "condition_symbol": r"(M_{ISTJ} \lor M_{ESTJ} \lor M_{INTJ} \lor M_{ENFJ}) \land T",
             "eval": (mbti in ["ISTJ", "ESTJ", "INTJ", "ENFJ"]) and is_social_people,
-            "rule_desc": "ต้องเป็น (ISTJ, ESTJ, INTJ, ENFJ) AND สนใจสังคม/กฎหมาย/การเมือง (T)",
-            "careers": "ทนายความ, ผู้พิพากษา, นักการเมือง, นักการทูต, ข้าราชการบริหาร"
+            "rule_desc": "ต้องเป็น (ISTJ, ESTJ, INTJ, ENFJ) AND สนใจกฎหมาย การเมือง หรือประเด็นสังคม (T)",
+            "careers": "ทนายความ, ผู้พิพากษา, นักการเมือง, นักการทูต, ข้าราชการบริหาร, นักนโยบาย"
         },
         {
-            "faculty": "🏛️ คณะวิทยาการข้อมูล / ปัญญาประดิษฐ์ / สถิติ (Data & AI)",
-            "condition_symbol": r"(M_{INTJ} \lor M_{INTP} \lor M_{ENTJ} \lor M_{ENTP}) \land Q \land (P \lor S \lor X)",
-            "eval": (mbti in ["INTJ", "INTP", "ENTJ", "ENTP"]) and is_tech and (is_math_sci or is_biz_finance or is_research),
-            "rule_desc": "ต้องเป็น (INTJ, INTP, ENTJ, ENTP) AND สนใจเทคโนโลยี AND (วิทย์/คณิต หรือ ธุรกิจ หรือ วิจัย)",
-            "careers": "นักวิทยาศาสตร์ข้อมูล, นักวิจัย AI, Machine Learning Engineer, นักสถิติ"
+            "faculty": "🏛️ คณะครุศาสตร์ / ศึกษาศาสตร์ / การฝึกอบรม (Education & Training)",
+            "condition_symbol": r"(M_{ENFJ} \lor M_{ESFJ} \lor M_{INFJ} \lor M_{ISFJ}) \land T",
+            "eval": (mbti in ["ENFJ", "ESFJ", "INFJ", "ISFJ"]) and is_social_people,
+            "rule_desc": "ต้องเป็น (ENFJ, ESFJ, INFJ, ISFJ) AND สนใจการสื่อสาร การพัฒนาคน หรือสังคม (T)",
+            "careers": "ครู, อาจารย์, นักออกแบบการเรียนรู้, วิทยากร, Learning & Development Specialist"
         },
         {
-            "faculty": "🏛️ คณะวิทยาศาสตร์ / วิจัยและห้องปฏิบัติการ (Pure Science & Research)",
-            "condition_symbol": r"(M_{INTP} \lor M_{INTJ} \lor M_{ISTJ} \lor M_{INFJ}) \land P \land (X \lor N)",
-            "eval": (mbti in ["INTP", "INTJ", "ISTJ", "INFJ"]) and is_math_sci and (is_research or is_nature),
-            "rule_desc": "ต้องเป็น (INTP, INTJ, ISTJ, INFJ) AND สนใจวิทย์/คณิต AND (วิจัย หรือ ธรรมชาติ/สิ่งแวดล้อม)",
-            "careers": "นักวิทยาศาสตร์, นักวิจัย, นักดาราศาสตร์, นักวิเคราะห์ห้องปฏิบัติการ"
+            "faculty": "🏛️ คณะมนุษยศาสตร์ / ภาษา / การแปล / ความสัมพันธ์ระหว่างประเทศ (Languages & Global Studies)",
+            "condition_symbol": r"(M_{INFJ} \lor M_{INFP} \lor M_{ENFP} \lor M_{ENFJ}) \land T \land (R \lor S)",
+            "eval": (mbti in ["INFJ", "INFP", "ENFP", "ENFJ"]) and is_social_people and (is_art_design or is_biz_finance),
+            "rule_desc": "ต้องเป็น (INFJ, INFP, ENFP, ENFJ) AND สนใจภาษา/สังคม (T) AND (สนใจศิลป์ หรือ ธุรกิจ)",
+            "careers": "นักแปล, ล่าม, นักเขียน, นักการทูต, เจ้าหน้าที่ความสัมพันธ์ระหว่างประเทศ"
         },
         {
-            "faculty": "🏛️ คณะสหเวชศาสตร์ / พยาบาลศาสตร์ / สาธารณสุข (Allied Health)",
-            "condition_symbol": r"(M_{ISFJ} \lor M_{ESFJ} \lor M_{ISTJ} \lor M_{ENFJ}) \land H \land (P \lor T \lor C)",
-            "eval": (mbti in ["ISFJ", "ESFJ", "ISTJ", "ENFJ"]) and is_healthcare and (is_math_sci or is_social_people or is_helping),
-            "rule_desc": "ต้องเป็น (ISFJ, ESFJ, ISTJ, ENFJ) AND สนใจสุขภาพ AND (วิทย์/คณิต หรือ ผู้คน/การช่วยเหลือ)",
-            "careers": "พยาบาล, นักกายภาพบำบัด, นักเทคนิคการแพทย์, นักสาธารณสุข"
+            "faculty": "🏛️ คณะวิทยาศาสตร์ / วิจัย / สิ่งแวดล้อม (Science, Research & Environment)",
+            "condition_symbol": r"(M_{INTP} \lor M_{INTJ} \lor M_{ISTJ} \lor M_{ISTP}) \land P",
+            "eval": (mbti in ["INTP", "INTJ", "ISTJ", "ISTP"]) and is_math_sci,
+            "rule_desc": "ต้องเป็น (INTP, INTJ, ISTJ, ISTP) AND สนใจวิทยาศาสตร์/คณิตศาสตร์ (P)",
+            "careers": "นักวิทยาศาสตร์, นักวิจัย, นักวิเคราะห์ห้องปฏิบัติการ, นักวิทยาศาสตร์สิ่งแวดล้อม"
         },
         {
-            "faculty": "🏛️ คณะโภชนาการ / วิทยาศาสตร์การอาหาร (Nutrition & Food Science)",
-            "condition_symbol": r"(M_{ISFJ} \lor M_{ISTJ} \lor M_{ISFP} \lor M_{ESFJ}) \land (H \lor F) \land P",
-            "eval": (mbti in ["ISFJ", "ISTJ", "ISFP", "ESFJ"]) and (is_healthcare or is_food) and is_math_sci,
-            "rule_desc": "ต้องเป็น (ISFJ, ISTJ, ISFP, ESFJ) AND สนใจสุขภาพ/อาหาร AND สนใจวิทย์/คณิต",
-            "careers": "นักกำหนดอาหาร, นักวิทยาศาสตร์การอาหาร, นักพัฒนาผลิตภัณฑ์อาหาร"
+            "faculty": "🏛️ คณะเกษตรศาสตร์ / เทคโนโลยีอาหาร / สัตวแพทยศาสตร์ (Agriculture & Food)",
+            "condition_symbol": r"(M_{ISTJ} \lor M_{ISFJ} \lor M_{ISTP} \lor M_{ESFP}) \land P \land (T \lor Q)",
+            "eval": (mbti in ["ISTJ", "ISFJ", "ISTP", "ESFP"]) and is_math_sci and (is_social_people or is_tech),
+            "rule_desc": "ต้องเป็น (ISTJ, ISFJ, ISTP, ESFP) AND สนใจวิทยาศาสตร์ (P) AND (สนใจผู้คน/สิ่งมีชีวิต หรือ เทคโนโลยี)",
+            "careers": "สัตวแพทย์, นักวิทยาศาสตร์การอาหาร, นักเกษตรอัจฉริยะ, นักพัฒนาผลิตภัณฑ์อาหาร"
         },
         {
-            "faculty": "🏛️ คณะสถาปัตยกรรมศาสตร์ / ภูมิสถาปัตย์ (Architecture)",
-            "condition_symbol": r"(M_{INTJ} \lor M_{ISTP} \lor M_{ISFP} \lor M_{ENTJ}) \land R \land (P \lor W)",
-            "eval": (mbti in ["INTJ", "ISTP", "ISFP", "ENTJ"]) and is_art_design and (is_math_sci or is_practical),
-            "rule_desc": "ต้องเป็น (INTJ, ISTP, ISFP, ENTJ) AND สนใจการออกแบบ AND (วิทย์/คณิต หรือ งานปฏิบัติ)",
-            "careers": "สถาปนิก, ภูมิสถาปนิก, นักออกแบบอาคาร, นักออกแบบพื้นที่"
+            "faculty": "🏛️ คณะการท่องเที่ยว / โรงแรม / การจัดอีเวนต์ (Tourism & Hospitality)",
+            "condition_symbol": r"(M_{ESFP} \lor M_{ENFP} \lor M_{ESFJ} \lor M_{ESTP}) \land T \land (R \lor S)",
+            "eval": (mbti in ["ESFP", "ENFP", "ESFJ", "ESTP"]) and is_social_people and (is_art_design or is_biz_finance),
+            "rule_desc": "ต้องเป็น (ESFP, ENFP, ESFJ, ESTP) AND สนใจงานบริการ/ผู้คน (T) AND (สนใจศิลป์ หรือ ธุรกิจ)",
+            "careers": "ผู้จัดการโรงแรม, นักวางแผนท่องเที่ยว, Event Organizer, ผู้จัดการสายการบิน, มัคคุเทศก์"
         },
         {
-            "faculty": "🏛️ คณะบัญชี / ตรวจสอบ / ภาษี (Accounting & Audit)",
-            "condition_symbol": r"(M_{ISTJ} \lor M_{ESTJ} \lor M_{INTJ} \lor M_{ISTP}) \land S \land (P \lor O)",
-            "eval": (mbti in ["ISTJ", "ESTJ", "INTJ", "ISTP"]) and is_biz_finance and (is_math_sci or is_operations),
-            "rule_desc": "ต้องเป็น (ISTJ, ESTJ, INTJ, ISTP) AND สนใจการเงิน AND (วิทย์/คณิต หรือ ระบบงาน)",
-            "careers": "นักบัญชี, ผู้สอบบัญชี, ที่ปรึกษาภาษี, ผู้ควบคุมภายใน"
+            "faculty": "🏛️ คณะโลจิสติกส์ / การจัดการอุตสาหกรรม / ซัพพลายเชน (Operations & Logistics)",
+            "condition_symbol": r"(M_{ESTJ} \lor M_{ISTJ} \lor M_{ENTJ} \lor M_{ISTP}) \land (P \lor S) \land Q",
+            "eval": (mbti in ["ESTJ", "ISTJ", "ENTJ", "ISTP"]) and (is_math_sci or is_biz_finance) and is_tech,
+            "rule_desc": "ต้องเป็น (ESTJ, ISTJ, ENTJ, ISTP) AND (สนใจวิทย์/คณิต หรือ ธุรกิจ) AND สนใจระบบเทคโนโลยี (Q)",
+            "careers": "ผู้จัดการซัพพลายเชน, นักวางแผนการผลิต, นักวิเคราะห์โลจิสติกส์, Operations Manager"
         },
         {
-            "faculty": "🏛️ คณะผู้ประกอบการ / การขาย / พาณิชย์อิเล็กทรอนิกส์ (Entrepreneurship & Sales)",
-            "condition_symbol": r"(M_{ENTJ} \lor M_{ENTP} \lor M_{ENFP} \lor M_{ESTP}) \land S \land (R \lor T)",
-            "eval": (mbti in ["ENTJ", "ENTP", "ENFP", "ESTP"]) and is_biz_finance and (is_art_design or is_social_people),
-            "rule_desc": "ต้องเป็น (ENTJ, ENTP, ENFP, ESTP) AND สนใจธุรกิจ AND (ความคิดสร้างสรรค์ หรือ การสื่อสาร)",
-            "careers": "ผู้ประกอบการ, นักขาย, Business Development, เจ้าของธุรกิจออนไลน์"
+            "faculty": "🏛️ คณะทหาร / ตำรวจ / ความปลอดภัยและการจัดการภาวะฉุกเฉิน (Public Safety)",
+            "condition_symbol": r"(M_{ESTJ} \lor M_{ISTJ} \lor M_{ESTP} \lor M_{ISTP}) \land (P \lor T)",
+            "eval": (mbti in ["ESTJ", "ISTJ", "ESTP", "ISTP"]) and (is_math_sci or is_social_people),
+            "rule_desc": "ต้องเป็น (ESTJ, ISTJ, ESTP, ISTP) AND (สนใจวิทย์/การแก้ปัญหา หรือ ประเด็นสังคม)",
+            "careers": "ทหาร, ตำรวจ, นักดับเพลิง, เจ้าหน้าที่กู้ภัย, นักบริหารความเสี่ยงและความปลอดภัย"
         },
         {
-            "faculty": "🏛️ คณะดนตรี / ศิลปะการแสดง / ภาพยนตร์ (Performing Arts)",
-            "condition_symbol": r"(M_{ISFP} \lor M_{ESFP} \lor M_{ENFP} \lor M_{INFP}) \lan� R \land (T \lor A)",
-            "eval": (mbti in ["ISFP", "ESFP", "ENFP", "INFP"]) and is_art_design and (is_social_people or is_sport),
-            "rule_desc": "ต้องเป็น (ISFP, ESFP, ENFP, INFP) AND สนใจศิลปะ AND (การสื่อสารกับผู้คน หรือ การเคลื่อนไหว)",
-            "careers": "นักดนตรี, นักแสดง, ผู้กำกับ, นักตัดต่อภาพยนตร์, ศิลปิน"
+            "faculty": "🏛️ คณะวิทยาศาสตร์การกีฬา / สุขภาพและสมรรถภาพ (Sports & Wellness)",
+            "condition_symbol": r"(M_{ESTP} \lor M_{ESFP} \lor M_{ISTP} \lor M_{ISFP}) \land (P \lor T)",
+            "eval": (mbti in ["ESTP", "ESFP", "ISTP", "ISFP"]) and (is_math_sci or is_social_people),
+            "rule_desc": "ต้องเป็น (ESTP, ESFP, ISTP, ISFP) AND สนใจร่างกาย วิทยาศาสตร์ หรือการดูแลผู้คน",
+            "careers": "นักวิทยาศาสตร์การกีฬา, ผู้ฝึกสอน, เทรนเนอร์, นักกายภาพด้านกีฬา, ผู้เชี่ยวชาญสุขภาพ"
         },
         {
-            "faculty": "🏛️ คณะภาษา / มนุษยศาสตร์ / ล่ามและการแปล (Languages & Humanities)",
-            "condition_symbol": r"(M_{ENFJ} \lor M_{ENFP} \lor M_{INFJ} \lor M_{INTP}) \land L \land (T \lor R)",
-            "eval": (mbti in ["ENFJ", "ENFP", "INFJ", "INTP"]) and is_language and (is_social_people or is_art_design),
-            "rule_desc": "ต้องเป็น (ENFJ, ENFP, INFJ, INTP) AND สนใจภาษา AND (สังคม/ผู้คน หรือ งานสร้างสรรค์)",
-            "careers": "นักแปล, ล่าม, นักเขียน, บรรณาธิการ, นักภาษาศาสตร์"
+            "faculty": "🏛️ คณะช่างเทคนิค / อาชีวศึกษา / งานฝีมือและการผลิต (Technical & Skilled Trades)",
+            "condition_symbol": r"(M_{ISTP} \lor M_{ESTP} \lor M_{ISTJ} \lor M_{ISFP}) \land (P \lor Q)",
+            "eval": (mbti in ["ISTP", "ESTP", "ISTJ", "ISFP"]) and (is_math_sci or is_tech),
+            "rule_desc": "ต้องเป็น (ISTP, ESTP, ISTJ, ISFP) AND สนใจการลงมือทำ วิทย์/คณิต หรือเทคโนโลยี",
+            "careers": "ช่างเทคนิค, ช่างไฟฟ้า, ช่างยนต์, ช่างอากาศยาน, ช่างภาพและผู้ผลิตงานฝีมือ"
         },
         {
-            "faculty": "🏛️ คณะครุศาสตร์ / ศึกษาศาสตร์ / การฝึกอบรม (Education)",
-            "condition_symbol": r"(M_{ENFJ} \lor M_{ESFJ} \lor M_{INFJ} \lor M_{ISFJ}) \land E \land (T \lor L \lor C)",
-            "eval": (mbti in ["ENFJ", "ESFJ", "INFJ", "ISFJ"]) and is_education and (is_social_people or is_language or is_helping),
-            "rule_desc": "ต้องเป็น (ENFJ, ESFJ, INFJ, ISFJ) AND สนใจการศึกษา AND (ผู้คน ภาษา หรือ การช่วยเหลือ)",
-            "careers": "ครู, อาจารย์, นักออกแบบการเรียนรู้, วิทยากร, ผู้เชี่ยวชาญพัฒนาบุคลากร"
+            "faculty": "🏛️ คณะผู้ประกอบการ / นวัตกรรม / ธุรกิจสตาร์ทอัป (Entrepreneurship & Innovation)",
+            "condition_symbol": r"(M_{ENTJ} \lor M_{ENTP} \lor M_{ENFP} \lor M_{ESTP}) \land S \land (Q \lor R)",
+            "eval": (mbti in ["ENTJ", "ENTP", "ENFP", "ESTP"]) and is_biz_finance and (is_tech or is_art_design),
+            "rule_desc": "ต้องเป็น (ENTJ, ENTP, ENFP, ESTP) AND สนใจธุรกิจ (S) AND (สนใจเทคโนโลยี หรือ ความสร้างสรรค์)",
+            "careers": "ผู้ก่อตั้งธุรกิจ, Product Manager, นักพัฒนานวัตกรรม, ที่ปรึกษาธุรกิจ, Startup Operator"
         },
         {
-            "faculty": "🏛️ คณะจิตวิทยา / ทรัพยากรมนุษย์ / การแนะแนว (Psychology & HR)",
-            "condition_symbol": r"(M_{INFJ} \lor M_{INFP} \lor M_{ENFJ} \lor M_{ENFP}) \land (T \lor C) \land (H \lor E)",
-            "eval": (mbti in ["INFJ", "INFP", "ENFJ", "ENFP"]) and (is_social_people or is_helping) and (is_healthcare or is_education),
-            "rule_desc": "ต้องเป็น (INFJ, INFP, ENFJ, ENFP) AND สนใจผู้คน/การช่วยเหลือ AND (สุขภาพจิต หรือ การพัฒนาคน)",
-            "careers": "นักจิตวิทยา, นักแนะแนว, HR Business Partner, นักพัฒนาทรัพยากรมนุษย์"
-        },
-        {
-            "faculty": "🏛️ คณะความสัมพันธ์ระหว่างประเทศ / การทูต (International Relations)",
-            "condition_symbol": r"(M_{ENFJ} \lor M_{ENFP} \lor M_{INFJ} \lor M_{ENTJ}) \land J \land (L \lor T)",
-            "eval": (mbti in ["ENFJ", "ENFP", "INFJ", "ENTJ"]) and is_legal and (is_language or is_social_people),
-            "rule_desc": "ต้องเป็น (ENFJ, ENFP, INFJ, ENTJ) AND สนใจกฎหมาย/นโยบาย AND (ภาษา หรือ สังคม)",
-            "careers": "นักการทูต, นักวิเคราะห์นโยบายต่างประเทศ, เจ้าหน้าที่องค์กรระหว่างประเทศ"
-        },
-        {
-            "faculty": "🏛️ คณะสังคมสงเคราะห์ / พัฒนาชุมชน / NGO (Social Development)",
-            "condition_symbol": r"(M_{INFJ} \lor M_{ENFJ} \lor M_{ISFJ} \lor M_{INFP}) \land C \land (T \lor J)",
-            "eval": (mbti in ["INFJ", "ENFJ", "ISFJ", "INFP"]) and is_helping and (is_social_people or is_legal),
-            "rule_desc": "ต้องเป็น (INFJ, ENFJ, ISFJ, INFP) AND สนใจการช่วยเหลือ AND (สังคม หรือ สิทธิ/นโยบาย)",
-            "careers": "นักสังคมสงเคราะห์, นักพัฒนาชุมชน, เจ้าหน้าที่ NGO, นักสิทธิมนุษยชน"
-        },
-        {
-            "faculty": "🏛️ คณะเกษตรศาสตร์ / สิ่งแวดล้อม / ทรัพยากรธรรมชาติ (Environment & Agriculture)",
-            "condition_symbol": r"(M_{ISFP} \lor M_{ISTP} \lor M_{ISFJ} \lor M_{ESTP}) \land N \land (P \lor W)",
-            "eval": (mbti in ["ISFP", "ISTP", "ISFJ", "ESTP"]) and is_nature and (is_math_sci or is_practical),
-            "rule_desc": "ต้องเป็น (ISFP, ISTP, ISFJ, ESTP) AND สนใจธรรมชาติ AND (วิทย์/คณิต หรือ งานปฏิบัติ)",
-            "careers": "นักสิ่งแวดล้อม, นักวิชาการเกษตร, นักวนศาสตร์, นักอนุรักษ์ทรัพยากร"
-        },
-        {
-            "faculty": "🏛️ คณะสัตวแพทยศาสตร์ / ประมง / วิทยาศาสตร์สัตว์ (Animal & Marine Science)",
-            "condition_symbol": r"(M_{ISTJ} \lor M_{ISFJ} \lor M_{ISFP} \lor M_{INTJ}) \land N \land (H \lor P)",
-            "eval": (mbti in ["ISTJ", "ISFJ", "ISFP", "INTJ"]) and is_nature and (is_healthcare or is_math_sci),
-            "rule_desc": "ต้องเป็น (ISTJ, ISFJ, ISFP, INTJ) AND สนใจธรรมชาติ/สัตว์ AND (สุขภาพ หรือ วิทย์/คณิต)",
-            "careers": "สัตวแพทย์, นักประมง, นักวิทยาศาสตร์ทางทะเล, นักวิจัยสัตว์"
-        },
-        {
-            "faculty": "🏛️ คณะวิทยาศาสตร์การกีฬา / พลศึกษา / ฟิตเนส (Sports Science)",
-            "condition_symbol": r"(M_{ESTP} \lor M_{ESFP} \lor M_{ISTP} \lor M_{ISFP}) \land A \land (H \lor T \lor C)",
-            "eval": (mbti in ["ESTP", "ESFP", "ISTP", "ISFP"]) and is_sport and (is_healthcare or is_social_people or is_helping),
-            "rule_desc": "ต้องเป็น (ESTP, ESFP, ISTP, ISFP) AND สนใจกีฬา AND (สุขภาพ หรือ ผู้คน/การช่วยเหลือ)",
-            "careers": "นักวิทยาศาสตร์การกีฬา, เทรนเนอร์, โค้ช, นักกายภาพด้านกีฬา"
-        },
-        {
-            "faculty": "🏛️ คณะคหกรรมศาสตร์ / การอาหาร / การโรงแรม (Culinary & Hospitality)",
-            "condition_symbol": r"(M_{ISFP} \lor M_{ESFP} \lor M_{ISTP} \lor M_{ESTP}) \land (F \lor V) \land (R \lor T)",
-            "eval": (mbti in ["ISFP", "ESFP", "ISTP", "ESTP"]) and (is_food or is_travel) and (is_art_design or is_social_people),
-            "rule_desc": "ต้องเป็น (ISFP, ESFP, ISTP, ESTP) AND สนใจอาหาร/บริการ AND (สร้างสรรค์ หรือ ผู้คน)",
-            "careers": "เชฟ, นักพัฒนาเมนู, ผู้จัดการโรงแรม, ผู้ประกอบการร้านอาหาร"
-        },
-        {
-            "faculty": "🏛️ คณะการท่องเที่ยว / การโรงแรม / ธุรกิจการบิน (Tourism & Aviation)",
-            "condition_symbol": r"(M_{ESFP} \lor M_{ENFP} \lor M_{ESFJ} \lor M_{ESTP}) \land V \land (L \lor T)",
-            "eval": (mbti in ["ESFP", "ENFP", "ESFJ", "ESTP"]) and is_travel and (is_language or is_social_people),
-            "rule_desc": "ต้องเป็น (ESFP, ENFP, ESFJ, ESTP) AND สนใจท่องเที่ยว/บริการ AND (ภาษา หรือ ผู้คน)",
-            "careers": "มัคคุเทศก์, ผู้จัดการโรงแรม, เจ้าหน้าที่สายการบิน, นักวางแผนท่องเที่ยว"
-        },
-        {
-            "faculty": "🏛️ คณะโลจิสติกส์ / ซัพพลายเชน / การจัดการปฏิบัติการ (Operations & Logistics)",
-            "condition_symbol": r"(M_{ESTJ} \lor M_{ISTJ} \lor M_{ENTJ} \lor M_{ESTP}) \land O \land (S \lor P)",
-            "eval": (mbti in ["ESTJ", "ISTJ", "ENTJ", "ESTP"]) and is_operations and (is_biz_finance or is_math_sci),
-            "rule_desc": "ต้องเป็น (ESTJ, ISTJ, ENTJ, ESTP) AND สนใจระบบงาน AND (ธุรกิจ หรือ วิทย์/คณิต)",
-            "careers": "ผู้จัดการโลจิสติกส์, นักวางแผนซัพพลายเชน, Operations Manager, ผู้ควบคุมคลังสินค้า"
-        },
-        {
-            "faculty": "🏛️ คณะอุตสาหกรรมการผลิต / วิศวกรรมเครื่องกล / งานช่าง (Industrial & Skilled Trades)",
-            "condition_symbol": r"(M_{ISTP} \lor M_{ISFP} \lor M_{ESTP} \lor M_{ISTJ}) \land W \land (P \lor O)",
-            "eval": (mbti in ["ISTP", "ISFP", "ESTP", "ISTJ"]) and is_practical and (is_math_sci or is_operations),
-            "rule_desc": "ต้องเป็น (ISTP, ISFP, ESTP, ISTJ) AND สนใจงานช่าง/ลงมือทำ AND (วิทย์/คณิต หรือ ระบบงาน)",
-            "careers": "ช่างเทคนิค, วิศวกรเครื่องกล, ช่างยนต์, ผู้ควบคุมการผลิต, ช่างไฟฟ้า"
-        },
-        {
-            "faculty": "🏛️ คณะก่อสร้าง / โยธา / อสังหาริมทรัพย์ (Construction & Property)",
-            "condition_symbol": r"(M_{ESTJ} \lor M_{ENTJ} \lor M_{ISTP} \lor M_{ESTP}) \land W \land (S \lor P)",
-            "eval": (mbti in ["ESTJ", "ENTJ", "ISTP", "ESTP"]) and is_practical and (is_biz_finance or is_math_sci),
-            "rule_desc": "ต้องเป็น (ESTJ, ENTJ, ISTP, ESTP) AND สนใจงานก่อสร้าง/ปฏิบัติ AND (ธุรกิจ หรือ วิทย์/คณิต)",
-            "careers": "วิศวกรโยธา, ผู้ควบคุมงานก่อสร้าง, นักประเมินอสังหาริมทรัพย์, ผู้จัดการโครงการ"
-        },
-        {
-            "faculty": "🏛️ คณะความมั่นคง / ตำรวจ / ทหาร / กู้ภัย (Security & Emergency)",
-            "condition_symbol": r"(M_{ISTJ} \lor M_{ESTJ} \lor M_{ISTP} \lor M_{ESTP}) \land K \land (T \lor W)",
-            "eval": (mbti in ["ISTJ", "ESTJ", "ISTP", "ESTP"]) and is_security and (is_social_people or is_practical),
-            "rule_desc": "ต้องเป็น (ISTJ, ESTJ, ISTP, ESTP) AND สนใจความปลอดภัย AND (สังคม/กฎระเบียบ หรือ งานปฏิบัติ)",
-            "careers": "ตำรวจ, ทหาร, นักกู้ภัย, เจ้าหน้าที่ความปลอดภัย, นักนิติวิทยาศาสตร์"
-        },
-        {
-            "faculty": "🏛️ คณะสารสนเทศศาสตร์ / บรรณารักษศาสตร์ / จดหมายเหตุ (Information & Archives)",
-            "condition_symbol": r"(M_{ISTJ} \lor M_{ISFJ} \lor M_{INTP} \lor M_{INTJ}) \land (Q \lor T) \land (X \lor L)",
-            "eval": (mbti in ["ISTJ", "ISFJ", "INTP", "INTJ"]) and (is_tech or is_social_people) and (is_research or is_language),
-            "rule_desc": "ต้องเป็น (ISTJ, ISFJ, INTP, INTJ) AND สนใจเทคโนโลยี/ข้อมูล AND (วิจัย หรือ ภาษา)",
-            "careers": "นักสารสนเทศ, บรรณารักษ์ดิจิทัล, นักจดหมายเหตุ, ผู้ดูแลฐานข้อมูล"
-        },
-        {
-            "faculty": "🏛️ คณะการบิน / การขนส่ง / ควบคุมการจราจร (Transportation)",
-            "condition_symbol": r"(M_{ESTP} \lor M_{ISTP} \lor M_{ENTJ} \lor M_{ESTJ}) \land (V \lor O) \land (P \lor K)",
-            "eval": (mbti in ["ESTP", "ISTP", "ENTJ", "ESTJ"]) and (is_travel or is_operations) and (is_math_sci or is_security),
-            "rule_desc": "ต้องเป็น (ESTP, ISTP, ENTJ, ESTJ) AND สนใจการเดินทาง/ระบบงาน AND (วิทย์/คณิต หรือ ความปลอดภัย)",
-            "careers": "นักบิน, เจ้าหน้าที่ควบคุมการจราจรทางอากาศ, ผู้จัดการขนส่ง, เจ้าหน้าที่ปฏิบัติการสนามบิน"
+            "faculty": "🏛️ คณะปรัชญา / ศาสนา / จริยศาสตร์และงานวิชาการ (Philosophy & Ethics)",
+            "condition_symbol": r"(M_{INFJ} \lor M_{INFP} \lor M_{INTP} \lor M_{INTJ}) \land T \land (P \lor R)",
+            "eval": (mbti in ["INFJ", "INFP", "INTP", "INTJ"]) and is_social_people and (is_math_sci or is_art_design),
+            "rule_desc": "ต้องเป็น (INFJ, INFP, INTP, INTJ) AND สนใจความหมายของมนุษย์/สังคม (T) AND (สนใจการวิเคราะห์ หรือ ศิลปะ)",
+            "careers": "นักปรัชญา, นักจริยธรรม, นักวิชาการ, นักวิจัยนโยบาย, นักเขียนสารคดีเชิงความคิด"
         }
     ]
 
