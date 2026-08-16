@@ -6,7 +6,11 @@ from questions import (
 from funding_step import render_funding_step, render_university_result
 from funding_university import get_faculty_results
 
-st.set_page_config(page_title="ระบบวิเคราะห์อาชีพด้วยตรรกศาสตร์ MBTI & Subject Logic", page_icon="🎓", layout="wide")
+st.set_page_config(
+    page_title="ระบบวิเคราะห์อาชีพด้วยตรรกศาสตร์ MBTI & Subject Logic",
+    page_icon="🎓",
+    layout="wide",
+)
 
 if "step" not in st.session_state:
     st.session_state.step = 1
@@ -14,50 +18,185 @@ if "mbti_result" not in st.session_state:
     st.session_state.mbti_result = "INTJ"
 if "category_scores" not in st.session_state:
     st.session_state.category_scores = {}
+if "mbti_function_index" not in st.session_state:
+    st.session_state.mbti_function_index = 0
+if "mbti_answers" not in st.session_state:
+    st.session_state.mbti_answers = {}
 
 SCALE_OPTIONS = {
-    "1 - ไม่ตรงเลย": 1, "2 - ไม่ค่อยตรง": 2, "3 - ปานกลาง / ไม่แน่ใจ": 3,
-    "4 - ค่อนข้างตรง": 4, "5 - ตรงมากที่สุด": 5,
+    "1 - ไม่ตรงเลย": 1,
+    "2 - ไม่ค่อยตรง": 2,
+    "3 - ปานกลาง / ไม่แน่ใจ": 3,
+    "4 - ค่อนข้างตรง": 4,
+    "5 - ตรงมากที่สุด": 5,
 }
 
-# STEP 1: MBTI
+# -----------------------------------------------------------------------------
+# STEP 1: MBTI — 8 cognitive functions × 10 questions
+# -----------------------------------------------------------------------------
 if st.session_state.step == 1:
+    function_order = ["Ne", "Ni", "Se", "Si", "Te", "Ti", "Fe", "Fi"]
+    function_names = {
+        "Ne": "Extraverted Intuition — จินตนาการและความเป็นไปได้",
+        "Ni": "Introverted Intuition — วิสัยทัศน์และความหมายเชิงลึก",
+        "Se": "Extraverted Sensing — การรับรู้และลงมือทำในปัจจุบัน",
+        "Si": "Introverted Sensing — ประสบการณ์ ความละเอียด และความมั่นคง",
+        "Te": "Extraverted Thinking — ประสิทธิภาพ เป้าหมาย และการจัดระบบ",
+        "Ti": "Introverted Thinking — เหตุผล หลักการ และการวิเคราะห์",
+        "Fe": "Extraverted Feeling — ความร่วมมือและความต้องการของกลุ่ม",
+        "Fi": "Introverted Feeling — คุณค่าและความเชื่อส่วนบุคคล",
+    }
+    function_icons = {
+        "Ne": "💡", "Ni": "🔭", "Se": "⚡", "Si": "🧠",
+        "Te": "📈", "Ti": "🔬", "Fe": "🤝", "Fi": "💚",
+    }
+
+    # Group questions by cognitive function so every section contains 10 items.
+    grouped_questions = {func: [] for func in function_order}
+    for question in COGNITIVE_QUESTIONS:
+        func = question.get("func")
+        if func in grouped_questions:
+            grouped_questions[func].append(question)
+
+    total_questions = sum(len(items) for items in grouped_questions.values())
+    current_index = st.session_state.mbti_function_index
+    current_func = function_order[current_index]
+    current_questions = grouped_questions[current_func]
+
     st.title("🧩 ขั้นตอนที่ 1: ประเมินบุคลิกภาพ (MBTI)")
-    st.write("เลือกสเกลที่ตรงกับตัวคุณมากที่สุดเพื่อสรุปหาประพจน์ทางบุคลิกภาพ")
-    with st.form("mbti_form"):
-        raw_answers = {}
-        for idx, q in enumerate(COGNITIVE_QUESTIONS, 1):
-            q_id = q.get("id", idx)
-            st.markdown(f"**ข้อที่ {idx}:** {q['text']}")
-            ans = st.radio(f"ระดับความตรง (ข้อ {idx}):", list(SCALE_OPTIONS.keys()), index=2, key=f"cog_{q_id}", horizontal=True)
-            raw_answers[q_id] = {"func": q["func"], "score": SCALE_OPTIONS[ans]}
-        if st.form_submit_button("🚀 ประมวลผล MBTI (ไปขั้นตอนที่ 2)"):
-            func_scores = {f: 0 for f in ["Ne", "Ni", "Se", "Si", "Te", "Ti", "Fe", "Fi"]}
-            for item in raw_answers.values():
-                func_scores[item["func"]] += item["score"]
-            func_percentages = {f: round((s / 50) * 100, 1) for f, s in func_scores.items()}
-            sorted_funcs = sorted(func_scores.items(), key=lambda x: x[1], reverse=True)
-            dom_func = max(func_scores, key=func_scores.get)
-            aux_candidates = {
-                "Ne": ["Ti", "Fi"], "Se": ["Ti", "Fi"], "Ni": ["Te", "Fe"], "Si": ["Te", "Fe"],
-                "Te": ["Ni", "Si"], "Fe": ["Ni", "Si"], "Ti": ["Ne", "Se"], "Fi": ["Ne", "Se"],
-            }
-            possible_aux = aux_candidates.get(dom_func, ["Te", "Fe"])
-            aux_func = max(possible_aux, key=lambda f: func_scores[f])
-            opposite = {"Ne": "Si", "Si": "Ne", "Ni": "Se", "Se": "Ni", "Te": "Fi", "Fi": "Te", "Ti": "Fe", "Fe": "Ti"}
-            st.session_state.func_scores = func_scores
-            st.session_state.func_percentages = func_percentages
-            st.session_state.sorted_funcs = sorted_funcs
-            st.session_state.mbti_stack = {"Dom": dom_func, "Aux": aux_func, "Tert": opposite[aux_func], "Inf": opposite[dom_func]}
-            type_mapping = {
-                ("Ne", "Ti"): "ENTP", ("Ne", "Fi"): "ENFP", ("Ni", "Te"): "INTJ", ("Ni", "Fe"): "INFJ",
-                ("Se", "Ti"): "ESTP", ("Se", "Fi"): "ESFP", ("Si", "Te"): "ISTJ", ("Si", "Fe"): "ISFJ",
-                ("Te", "Ni"): "ENTJ", ("Te", "Si"): "ESTJ", ("Ti", "Ne"): "INTP", ("Ti", "Se"): "ISTP",
-                ("Fe", "Ni"): "ENFJ", ("Fe", "Si"): "ESFJ", ("Fi", "Ne"): "INFP", ("Fi", "Se"): "ISFP",
-            }
-            st.session_state.mbti_result = type_mapping.get((dom_func, aux_func), "INTJ")
-            st.session_state.step = 2
+    st.caption("แบบประเมินแบ่งเป็น 8 ฟังก์ชันทางการคิด • ฟังก์ชันละ 10 ข้อ • รวม 80 ข้อ")
+
+    # Progress header
+    completed_functions = current_index
+    completed_questions = completed_functions * 10
+    progress = completed_questions / max(total_questions, 1)
+    st.progress(progress)
+
+    pcols = st.columns(4)
+    pcols[0].metric("ฟังก์ชัน", f"{current_index + 1}/8")
+    pcols[1].metric("ข้อปัจจุบัน", f"1–{len(current_questions)}")
+    pcols[2].metric("ทำแล้ว", f"{completed_questions}/{total_questions}")
+    pcols[3].metric("สถานะ", "กำลังทำ" if current_index < 7 else "สุดท้าย")
+
+    # Function navigation chips
+    st.markdown("### 🧭 เลือกดูโครงสร้างการประเมิน")
+    nav_cols = st.columns(8)
+    for idx, func in enumerate(function_order):
+        label = f"✅ {func}" if idx < current_index else (f"▶️ {func}" if idx == current_index else f"○ {func}")
+        if nav_cols[idx].button(label, key=f"func_nav_{func}", disabled=idx > current_index):
+            st.session_state.mbti_function_index = idx
             st.rerun()
+
+    st.markdown("---")
+    st.subheader(f"{function_icons[current_func]} ฟังก์ชัน {current_func}")
+    st.write(function_names[current_func])
+    st.info(
+        "ตอบตามพฤติกรรมที่เป็นตัวคุณจริง ๆ มากที่สุด ไม่มีคำตอบถูกหรือผิด "
+        "และสามารถเลือก **ปานกลาง / ไม่แน่ใจ** ได้เมื่อยังไม่มั่นใจ"
+    )
+
+    if len(current_questions) != 10:
+        st.error(
+            f"โครงสร้างคำถามของ {current_func} มี {len(current_questions)} ข้อ "
+            "แต่ระบบต้องการ 10 ข้อ กรุณาตรวจสอบ COGNITIVE_QUESTIONS ใน questions.py"
+        )
+    else:
+        with st.form(f"mbti_function_form_{current_func}"):
+            local_answers = {}
+            for idx, question in enumerate(current_questions, 1):
+                q_id = question.get("id", f"{current_func}_{idx}")
+                previous_score = st.session_state.mbti_answers.get(q_id, 3)
+                previous_option = next(
+                    (label for label, score in SCALE_OPTIONS.items() if score == previous_score),
+                    "3 - ปานกลาง / ไม่แน่ใจ",
+                )
+                default_index = list(SCALE_OPTIONS.keys()).index(previous_option)
+
+                st.markdown(f"**ข้อ {idx}/10** — {question['text']}")
+                answer = st.radio(
+                    "ระดับความตรงกับตัวคุณ",
+                    list(SCALE_OPTIONS.keys()),
+                    index=default_index,
+                    key=f"mbti_{current_func}_{q_id}",
+                    horizontal=True,
+                    label_visibility="collapsed",
+                )
+                local_answers[q_id] = SCALE_OPTIONS[answer]
+                if idx < len(current_questions):
+                    st.divider()
+
+            submit_label = (
+                "🏁 คำนวณผล MBTI" if current_index == len(function_order) - 1
+                else f"💾 บันทึกฟังก์ชัน {current_func} และไปต่อ →"
+            )
+            submitted = st.form_submit_button(submit_label, type="primary", use_container_width=True)
+
+        if submitted:
+            st.session_state.mbti_answers.update(local_answers)
+
+            if current_index < len(function_order) - 1:
+                st.session_state.mbti_function_index += 1
+                st.rerun()
+            else:
+                # Calculate all 8 function scores from the stored answers.
+                func_scores = {func: 0 for func in function_order}
+                question_by_id = {
+                    question.get("id"): question
+                    for question in COGNITIVE_QUESTIONS
+                }
+                for q_id, score in st.session_state.mbti_answers.items():
+                    question = question_by_id.get(q_id)
+                    if question and question.get("func") in func_scores:
+                        func_scores[question["func"]] += score
+
+                # Each function is expected to contain exactly 10 questions (max 50).
+                func_percentages = {
+                    func: round((score / 50) * 100, 1)
+                    for func, score in func_scores.items()
+                }
+                sorted_funcs = sorted(func_scores.items(), key=lambda item: item[1], reverse=True)
+                dom_func = max(func_scores, key=func_scores.get)
+                aux_candidates = {
+                    "Ne": ["Ti", "Fi"], "Se": ["Ti", "Fi"],
+                    "Ni": ["Te", "Fe"], "Si": ["Te", "Fe"],
+                    "Te": ["Ni", "Si"], "Fe": ["Ni", "Si"],
+                    "Ti": ["Ne", "Se"], "Fi": ["Ne", "Se"],
+                }
+                possible_aux = aux_candidates.get(dom_func, ["Te", "Fe"])
+                aux_func = max(possible_aux, key=lambda func: func_scores[func])
+                opposite = {
+                    "Ne": "Si", "Si": "Ne", "Ni": "Se", "Se": "Ni",
+                    "Te": "Fi", "Fi": "Te", "Ti": "Fe", "Fe": "Ti",
+                }
+                type_mapping = {
+                    ("Ne", "Ti"): "ENTP", ("Ne", "Fi"): "ENFP",
+                    ("Ni", "Te"): "INTJ", ("Ni", "Fe"): "INFJ",
+                    ("Se", "Ti"): "ESTP", ("Se", "Fi"): "ESFP",
+                    ("Si", "Te"): "ISTJ", ("Si", "Fe"): "ISFJ",
+                    ("Te", "Ni"): "ENTJ", ("Te", "Si"): "ESTJ",
+                    ("Ti", "Ne"): "INTP", ("Ti", "Se"): "ISTP",
+                    ("Fe", "Ni"): "ENFJ", ("Fe", "Si"): "ESFJ",
+                    ("Fi", "Ne"): "INFP", ("Fi", "Se"): "ISFP",
+                }
+
+                st.session_state.func_scores = func_scores
+                st.session_state.func_percentages = func_percentages
+                st.session_state.sorted_funcs = sorted_funcs
+                st.session_state.mbti_stack = {
+                    "Dom": dom_func,
+                    "Aux": aux_func,
+                    "Tert": opposite[aux_func],
+                    "Inf": opposite[dom_func],
+                }
+                st.session_state.mbti_result = type_mapping.get((dom_func, aux_func), "INTJ")
+                st.session_state.mbti_function_index = 0
+                st.session_state.step = 2
+                st.rerun()
+
+    # Back button for easier editing.
+    if current_index > 0 and st.button("⬅️ กลับไปแก้ฟังก์ชันก่อนหน้า"):
+        st.session_state.mbti_function_index -= 1
+        st.rerun()
 
 # STEP 2: MBTI summary
 elif st.session_state.step == 2:
