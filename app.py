@@ -198,7 +198,6 @@ elif st.session_state.step == 3:
     
     with st.form("all_categories_form"):
         category_scores = {}
-        category_answers = {}
         
         for tab_name, questions_list, prefix in all_question_sets:
             st.subheader(tab_name)
@@ -229,7 +228,6 @@ elif st.session_state.step == 3:
                     # คำนวณคะแนนตามลำดับตัวเลือกที่เลือก
                     score_val = (options.index(ans) + 1) * (5 / len(options))
                     category_scores[category] = category_scores.get(category, 0) + score_val
-                    category_answers[q_id] = ans
                 else:
                     ans = st.radio(
                         f"ระดับความตรง ({q_id}):", 
@@ -239,7 +237,7 @@ elif st.session_state.step == 3:
                         horizontal=True
                     )
                     category_scores[category] = category_scores.get(category, 0) + SCALE_OPTIONS[ans]
-                    category_answers[q_id] = ans
+                    
                 st.markdown("<hr style='margin: 0.2rem 0 0.8rem 0;'>", unsafe_allow_html=True)
             st.markdown("---")
 
@@ -247,7 +245,6 @@ elif st.session_state.step == 3:
         
         if submitted_step3:
             st.session_state.category_scores = category_scores
-            st.session_state.category_answers = category_answers
             st.session_state.step = 4
             st.rerun()
 # ---------------------------------------------------------
@@ -274,7 +271,20 @@ elif st.session_state.step == 4:
     is_biz_finance = is_category_high(["finance", "การเงิน", "ธุรกิจ", "การบริหาร", "การลงทุน", "การตลาด", "การค้า"])
     is_social_people = is_category_high(["social", "สังคม", "ภาษา", "จิตวิทยา", "การบริการ", "การสื่อสาร", "บริหารคน"])
 
+    st.markdown("### 1. สรุปประพจน์ความสนใจและศักยภาพ (Propositions Setup)")
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        st.write(f"- **ประพจน์ $M_{{{mbti}}}$**: บุคลิกภาพแบบ {mbti} = `True`")
+        st.write(f"- **ประพจน์ $P$ (สนใจสายวิทยาศาสตร์/คณิตศาสตร์)** = `{is_math_sci}`")
+        st.write(f"- **ประพจน์ $Q$ (สนใจเทคโนโลยี/ไอที/นวัตกรรม)** = `{is_tech}`")
+    with col_p2:
+        st.write(f"- **ประพจน์ $R$ (สนใจศิลปะ/การออกแบบ/งานสร้างสรรค์)** = `{is_art_design}`")
+        st.write(f"- **ประพจน์ $S$ (สนใจบริหาร/การเงิน/ธุรกิจ)** = `{is_biz_finance}`")
+        st.write(f"- **ประพจน์ $T$ (สนใจมนุษยศาสตร์/สังคม/จิตวิทยา/ภาษา)** = `{is_social_people}`")
 
+    st.markdown("---")
+    st.markdown("### 2. ตรวจสอบเงื่อนไขทางตรรกศาสตร์ของแต่ละสายคณะและอาชีพ")
+    
     # นิยามเงื่อนไขตรรกศาสตร์ครอบคลุมทุกสายอาชีพ
     # M_{TYPE} = ผล MBTI, P = วิทย์/คณิต, Q = เทคโนโลยี,
     # R = ศิลปะ/ความสร้างสรรค์, S = ธุรกิจ/การเงิน,
